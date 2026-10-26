@@ -1,0 +1,197 @@
+---
+// src/pages/portfolio/index.astro
+import Layout from '../../layouts/Layout.astro';
+import '../../styles/pages/_portfolio.scss';
+import { client } from '../../sanity.js';
+
+// ดึงข้อมูล Portfolio Page Settings จาก Sanity
+const portfolioPageQuery = `*[_type == "portfolioPage"][0]{
+  title,
+  description,
+  seoTitle,
+  seoDescription,
+  ogImage{
+    asset->{
+      url
+    },
+    alt
+  },
+  contactHeading,
+  contactDescription,
+  contactLinks[]
+}`;
+const portfolioPageData = await client.fetch(portfolioPageQuery);
+console.log('portfolioPageData:', portfolioPageData);
+
+// ดึงรายการ portfolio items
+const query = `*[_type == "portfolio"] | order(_createdAt desc) {
+  title,
+  description,
+  "imageUrl": mainImage.asset->url,
+  "alt": mainImage.alt,
+  "gallery": gallery[]{
+    "url": asset->url,
+    "alt": alt
+  }
+}`;
+
+const portfolioItems = await client.fetch(query);
+
+const pageTitle = portfolioPageData?.seoTitle || 'ของชำร่วยเครื่องหนัง สั่งทำพิเศษ | SabuyKapao';
+const pageDescription = portfolioPageData?.seoDescription || 'รับสั่งทำของชำร่วยเครื่องหนัง ของที่ระลึกเกรดพรีเมียมสำหรับทุกโอกาสสำคัญ';
+const pageSchema = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": pageTitle,
+    "description": pageDescription,
+    "url": new URL(Astro.url.pathname, Astro.site).href,
+};
+---
+
+<Layout 
+  title={pageTitle}
+  description={pageDescription}
+  ogImage={portfolioPageData?.ogImage?.asset?.url}
+>
+  <Fragment slot="head">
+    <!-- Preconnect to Sanity CDN -->
+    <link rel="preconnect" href="https://cdn.sanity.io" />
+    <!-- Preload first portfolio image for LCP -->
+    {portfolioItems[0]?.imageUrl && (
+      <link 
+        rel="preload" 
+        as="image" 
+        href={`${portfolioItems[0].imageUrl}?w=500&h=500&fit=crop&q=90&auto=format`} 
+        imagesrcset={`
+          ${portfolioItems[0].imageUrl}?w=250&h=250&fit=crop&q=90&auto=format 250w,
+          ${portfolioItems[0].imageUrl}?w=500&h=500&fit=crop&q=90&auto=format 500w
+        `}
+        imagesizes="(max-width: 480px) 50vw, 500px"
+        fetchpriority="high" 
+      />
+    )}
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebPage",
+          "@id": "https://sabuykapao.com/portfolio",
+          "url": "https://sabuykapao.com/portfolio",
+          "name": pageTitle,
+          "isPartOf": { "@id": "https://sabuykapao.com/#website" },
+          "breadcrumb": { "@id": "https://sabuykapao.com/portfolio#breadcrumb" },
+          "mainEntity": { "@id": "https://sabuykapao.com/portfolio#service" }
+        },
+        {
+          "@type": "Service",
+          "@id": "https://sabuykapao.com/portfolio#service",
+          "name": "บริการรับสั่งทำของชำร่วยเครื่องหนังและสินค้าพรีเมียม",
+          "serviceType": "Custom Leather Goods Manufacturing and Corporate Gifts",
+          "description": "SabuyKapao รับผลิตและออกแบบของชำร่วยเครื่องหนังแท้ ของที่ระลึกเกรดพรีเมียมสำหรับทุกโอกาสสำคัญ สามารถสลักชื่อ โลโก้ หรือข้อความพิเศษได้ตามต้องการ เหมาะสำหรับงานแต่งงาน งานเกษียณ และเป็นของขวัญสำหรับองค์กร",
+          "provider": { "@id": "https://sabuykapao.com/#organization" },
+          "areaServed": { "@type": "Country", "name": "Thailand" }
+        },
+        {
+          "@type": "BreadcrumbList",
+          "@id": "https://sabuykapao.com/portfolio#breadcrumb",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "หน้าแรก", "item": "https://sabuykapao.com/" },
+            { "@type": "ListItem", "position": 2, "name": "ของชำร่วยสั่งทำพิเศษ", "item": "https://sabuykapao.com/portfolio" }
+          ]
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://sabuykapao.com/#organization",
+          "name": "SabuyKapao",
+          "url": "https://sabuykapao.com/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://sabuykapao.com/sabuykapao-logo.svg"
+          },
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "+66-84-095-4445",
+            "contactType": "Customer Service"
+          },
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "337/2 หมู่ 4 ทางหลวงแผ่นดินหมายเลข 325, ตำบลดอนกรวย",
+            "addressLocality": "ดำเนินสะดวก",
+            "addressRegion": "ราชบุรี",
+            "postalCode": "70130",
+            "addressCountry": "TH"
+          },
+          "sameAs": [
+            "https://www.facebook.com/sabuykapao",
+            "https://line.me/ti/p/@sabuykapao",
+            "https://www.tiktok.com/@sabuykapao",
+            "https://shopee.co.th/sabuykapao"
+          ]
+        }
+      ]
+    })} />
+  </Fragment>
+
+  <main class="portfolio-page">
+    <div class="container">
+      <div class="page-header">
+        <h1>{portfolioPageData?.title || 'ของชำร่วยเครื่องหนัง สั่งทำพิเศษ'}</h1>
+        <p>
+          {portfolioPageData?.description || 'มอบความทรงจำอันล้ำค่าผ่านของชำร่วยเครื่องหนังเกรดพรีเมียม ที่เราบรรจงสร้างสรรค์ด้วยความประณีตทุกขั้นตอน พร้อมบริการสั่งทำพิเศษเพื่อสะท้อนตัวตนของคุณและวันสำคัญได้อย่างสมบูรณ์แบบ ไม่ว่าจะเป็นของชำร่วยงานแต่ง, ของที่ระลึกงานบวช, งานเกษียณ, หรืองานมิตติ้ง เราสามารถสลักโลโก้และออกแบบให้ตอบโจทย์ความต้องการของคุณได้ทั้งหมด'}
+        </p>
+      </div>
+
+      <div class="portfolio-grid-container">
+        <div class="portfolio-grid">
+          {portfolioItems.map((item, index) => (
+            <div class="portfolio-card">
+              <div class="portfolio-card__image-wrapper">
+                {item.imageUrl && (
+                  <img 
+                    src={`${item.imageUrl}?w=500&h=500&fit=crop&q=90&auto=format`}
+                    srcset={`
+                      ${item.imageUrl}?w=250&h=250&fit=crop&q=90&auto=format 250w,
+                      ${item.imageUrl}?w=500&h=500&fit=crop&q=90&auto=format 500w
+                    `}
+                    sizes="(max-width: 480px) 50vw, 500px"
+                    alt={item.alt || item.title}
+                    width="500"
+                    height="500"
+                    loading={index < 3 ? "eager" : "lazy"}
+                    decoding="async"
+                    fetchpriority={index === 0 ? "high" : "auto"}
+                  />
+                )}
+              </div>
+              <h2 class="portfolio-card__name">{item.title}</h2>
+              {item.description && <p class="portfolio-card__description">{item.description}</p>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div class="contact-prompt">
+        <h3>{portfolioPageData?.contactHeading || 'สนใจสั่งทำชิ้นงานพิเศษของคุณเอง?'}</h3>
+        <p>{portfolioPageData?.contactDescription || 'สัมผัสประสบการณ์งานสั่งทำคุณภาพส่งออก ในราคาผู้ผลิตโดยตรง ที่จะทำให้แขกคนสำคัญของคุณประทับใจไม่รู้ลืม'}</p>
+        <div class="contact-buttons">
+          {portfolioPageData?.contactLinks && portfolioPageData.contactLinks.map((link) => (
+            <a 
+              href={link.url} 
+              class={`contact-button ${link.platform}`}
+              target={link.platform === 'line' ? '_blank' : '_self'}
+              rel={link.platform === 'line' ? 'noopener noreferrer' : ''}
+            >
+              {link.platform === 'line' && (
+                <img src="/icons/icon-line-white.svg" alt="ติดต่อทาง Line" width="24" height="24"/>
+              )}
+              {link.platform === 'facebook' && (
+                <img src="/icons/icon-facebook-messenger-white.svg" alt="ติดต่อทาง Facebook Messenger" width="24" height="24"/>
+              )}
+              <span>{link.label}</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  </main>
+</Layout>

@@ -1,0 +1,239 @@
+---
+// src/pages/contact-us.astro
+import { Image } from 'astro:assets';
+import Layout from '../layouts/Layout.astro';
+import '../styles/pages/_contact.scss';
+import { client } from '../lib/sanityClient.js';
+import { urlFor } from '../lib/sanityImageUrl.js';
+import storefrontImage from '../assets/images/contact/contact-storefront.webp';
+
+// ===== ดึงข้อมูล Contact Us Page Settings จาก Sanity =====
+const contactUsPageQuery = `*[_type == "contactUsPage"][0]{
+  headerTitle,
+  headerDescription,
+  coverImage,
+  website,
+  facebook,
+  line,
+  phones[],
+  address,
+  addressNote,
+  googleMapUrl,
+  businessHours[]{
+    day,
+    time
+  },
+  seoTitle,
+  seoDescription,
+  ogImage{
+    asset->{
+      url
+    },
+    alt
+  }
+}`;
+const contactUsPageData = await client.fetch(contactUsPageQuery);
+
+// ===== Set SEO Variables =====
+const pageTitle = contactUsPageData?.seoTitle || 'ติดต่อเรา - SabuyKapao';
+const pageDescription = contactUsPageData?.seoDescription || 'ติดต่อ SabuyKapao เพื่อสอบถามข้อมูล สั่งทำสินค้า หรือเยี่ยมชมร้านของเรา';
+const pageOgImage = contactUsPageData?.ogImage?.asset?.url;
+
+// --- Cover Image Logic ---
+let coverImageSrc: any = storefrontImage;
+let coverImageAlt = 'หน้าร้าน SabuyKapao';
+
+if (contactUsPageData?.coverImage) {
+  try {
+    coverImageSrc = urlFor(contactUsPageData.coverImage).width(500).quality(95).url();
+    coverImageAlt = contactUsPageData.coverImage.alt || coverImageAlt;
+  } catch (error) {
+    console.error("Error generating cover image URL:", error);
+  }
+}
+
+// --- พิกัดร้าน ---
+const coordinates = "13.57375628272967,99.97051673787385";
+---
+
+<Layout 
+  title={pageTitle}
+  description={pageDescription}
+  ogImage={pageOgImage}
+>
+  <Fragment slot="head">
+    <!-- Preconnect to Sanity CDN -->
+    <link rel="preconnect" href="https://cdn.sanity.io" />
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "ContactPage",
+          "@id": "https://sabuykapao.com/contact-us#webpage",
+          "url": "https://sabuykapao.com/contact-us",
+          "name": pageTitle,
+          "description": pageDescription,
+          "image": typeof coverImageSrc === 'string' ? coverImageSrc : (contactUsPageData?.coverImage ? urlFor(contactUsPageData.coverImage).width(1200).quality(90).url() : storefrontImage.src),
+          "isPartOf": { "@id": "https://sabuykapao.com/#website" },
+          "breadcrumb": { "@id": "https://sabuykapao.com/contact-us#breadcrumb" },
+          "mainEntity": { "@id": "https://sabuykapao.com/contact-us#localbusiness" }
+        },
+        {
+          "@type": "LocalBusiness",
+          "@id": "https://sabuykapao.com/contact-us#localbusiness",
+          "name": "SabuyKapao - ร้านเครื่องหนังแท้แฮนด์เมด",
+          "url": "https://sabuykapao.com/",
+          "logo": "https://sabuykapao.com/sabuykapao-logo.svg",
+          "image": typeof coverImageSrc === 'string' ? coverImageSrc : (contactUsPageData?.coverImage ? urlFor(contactUsPageData.coverImage).width(1200).quality(90).url() : storefrontImage.src),
+          "telephone": contactUsPageData?.phones?.[0] || "+66-84-095-4445",
+          "priceRange": "$$",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": contactUsPageData?.address || "337/2 หมู่ 4 ทางหลวงแผ่นดินหมายเลข 325, ตำบลดอนกรวย",
+            "addressLocality": "ดำเนินสะดวก",
+            "addressRegion": "ราชบุรี",
+            "postalCode": "70130",
+            "addressCountry": "TH"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 13.573707630689894,
+            "longitude": 99.97050015123291
+          },
+          "hasMap": contactUsPageData?.googleMapUrl || "https://www.google.com/maps?q=13.573707630689894,99.97050015123291",
+          "openingHoursSpecification": [
+            {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
+              "opens": "08:00",
+              "closes": "17:00"
+            },
+            {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": "Sunday",
+              "opens": "08:00",
+              "closes": "12:00"
+            }
+          ],
+          "sameAs": [
+            "https://www.facebook.com/sabuykapao",
+            "https://line.me/ti/p/@sabuykapao",
+            "https://www.tiktok.com/@sabuykapao",
+            "https://shopee.co.th/sabuykapao"
+          ]
+        },
+        {
+          "@type": "BreadcrumbList",
+          "@id": "https://sabuykapao.com/contact-us#breadcrumb",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "หน้าแรก",
+              "item": "https://sabuykapao.com/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "ติดต่อเรา",
+              "item": "https://sabuykapao.com/contact-us"
+            }
+          ]
+        }
+      ]
+    })} />
+  </Fragment>
+
+  <main class="contact-page">
+    <div class="container">
+      <div class="contact-layout">
+        
+        <div class="contact-content">
+          <header class="page-header">
+            <h1>{contactUsPageData?.headerTitle || 'ติดต่อเรา'}</h1>
+            <p class="description">{contactUsPageData?.headerDescription || 'หากมีคำถามเพิ่มเติมหรือต้องการความช่วยเหลือ โปรดติดต่อเราผ่านช่องทางที่สะดวกสำหรับคุณ'}</p>
+          </header>
+
+          <div class="info-grid">
+            <div class="info-item">
+              <h3>ช่องทางการติดต่อ</h3>
+              <ul class="clean-list">
+                {contactUsPageData?.website && (
+                  <li>
+                    <span class="icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    </span>
+                    <a href={`https://${contactUsPageData.website}`} target="_blank" rel="noopener noreferrer">{contactUsPageData.website}</a>
+                  </li>
+                )}
+                {contactUsPageData?.facebook && (
+                  <li>
+                    <span class="icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                    </span>
+                    <a href={`https://www.facebook.com/${contactUsPageData.facebook}`} target="_blank" rel="noopener noreferrer">{contactUsPageData.facebook}</a>
+                  </li>
+                )}
+                {contactUsPageData?.line && (
+                  <li>
+                    <span class="icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                    </span>
+                    <a href={`https://line.me/ti/p/~${contactUsPageData.line.replace('@', '')}`} target="_blank" rel="noopener noreferrer">{contactUsPageData.line}</a>
+                  </li>
+                )}
+                {contactUsPageData?.phones && contactUsPageData.phones.length > 0 && (
+                  <li>
+                    <span class="icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                    </span>
+                    <span>{contactUsPageData.phones.join(', ')}</span>
+                  </li>
+                )}
+              </ul>
+            </div>
+
+            {contactUsPageData?.businessHours && contactUsPageData.businessHours.length > 0 && (
+              <div class="info-item">
+                <h3>เวลาทำการ</h3>
+                <ul class="clean-list">
+                  {contactUsPageData.businessHours.map((hour: any) => (
+                    <li>
+                      <span class="label">{hour.day}</span>
+                      <span>{hour.time}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div class="info-item">
+              <h3>ที่อยู่ร้าน</h3>
+              <p class="address-text">
+                {contactUsPageData?.address || '337/2 หมู่ 4 ต.ดอนกรวย อ.ดำเนินสะดวก จ.ราชบุรี 70130'}
+              </p>
+              {contactUsPageData?.addressNote && (
+                <p class="address-note">{contactUsPageData.addressNote}</p>
+              )}
+              <a href={contactUsPageData?.googleMapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(contactUsPageData?.address || '337/2 หมู่ 4 ต.ดอนกรวย อ.ดำเนินสะดวก จ.ราชบุรี 70130')}`} target="_blank" rel="noopener noreferrer" class="direction-btn">
+                ดูเส้นทางใน Google Map
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="contact-visual">
+          <div class="image-frame">
+            {typeof coverImageSrc === 'string' ? (
+              <img src={coverImageSrc} alt={coverImageAlt} width="400" height="300" loading="lazy" decoding="async" />
+            ) : (
+              <Image src={coverImageSrc} alt={coverImageAlt} width={800} height={600} format="webp" quality={95} />
+            )}
+          </div>
+        </div>
+
+      </div>
+    </div>
+    
+  </main>
+</Layout>

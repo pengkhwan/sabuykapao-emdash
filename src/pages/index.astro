@@ -1,0 +1,411 @@
+---
+// src/pages/index.astro
+import Layout from '../layouts/Layout.astro';
+import '../styles/pages/_home.scss';
+import { client } from '../lib/sanityClient.js';
+import { urlFor } from '../lib/sanityImageUrl.js';
+
+// --- Import รูปภาพทั้งหมด ---
+import heroImage from '../assets/images/hero-main-photo.webp';
+import craftingImage from '../assets/images/crafting-process.webp';
+import customOrdersImage from '../assets/images/home-custom-orders.webp';
+
+import categoryKeychain from '../assets/images/category-keychain.webp';
+import categoryHandbag from '../assets/images/category-handbag.webp';
+import categoryShoulderBag from '../assets/images/category-shoulder-bag.webp';
+import categoryWallet from '../assets/images/category-wallet.webp';
+import categoryBackpack from '../assets/images/category-backpack.webp';
+import categoryChestBag from '../assets/images/category-chest-bag.webp';
+import categoryBelt from '../assets/images/category-belt.webp';
+import categoryEtc from '../assets/images/category-etc.webp';
+
+import productWallet from '../assets/images/product-wallet.webp';
+import productCrossbody from '../assets/images/product-crossbody-bag.webp';
+import productKeychain from '../assets/images/product-keychain.webp';
+import productBagCharm from '../assets/images/product-bag-charm.webp';
+
+// --- Fetch Data from Sanity ---
+const homePageQuery = `*[_type == "homePage"][0]{
+  heroTitle,
+  heroDescription,
+  heroImage,
+  heroCtaText,
+  heroCtaLink,
+  categoryTitle,
+  categoryDescription,
+  showcaseTitle,
+  showcaseDescription,
+  featuredProducts[]->{
+    name,
+    "category": category->title,
+    "slug": slug.current,
+    image{
+      asset,
+      alt
+    }
+  },
+  craftingTitle,
+  craftingDescription,
+  craftingImage,
+  craftingCtaText,
+  craftingCtaLink,
+  customOrderTitle,
+  customOrderDescription,
+  customOrderImage,
+  customOrderCtaText,
+  customOrderCtaLink,
+  testimonialTitle,
+  testimonials,
+  seo{
+    seoTitle,
+    seoDescription,
+    ogImage{
+      asset->{
+        url
+      }
+    }
+  }
+}`;
+
+const categoriesQuery = `*[_type == "category"] | order(order asc){
+  title,
+  "slug": slug.current,
+  image
+}`;
+
+const [homePageData, sanityCategories] = await Promise.all([
+  client.fetch(homePageQuery),
+  client.fetch(categoriesQuery)
+]);
+
+// --- Prepare Data with Fallbacks ---
+
+// Hero Section
+const heroTitle = homePageData?.heroTitle || "เครื่องหนังแท้แฮนด์เมด SabuyKapao: ศิลปะที่สัมผัสได้";
+const heroDescription = homePageData?.heroDescription || "เราสร้างสรรค์กระเป๋าและเครื่องหนังจากหนังวัวแท้ 100% ผ่านงานฝีมืออันประณีต เพื่อให้ทุกชิ้นงานสะท้อนตัวตนของคุณและคงทนงดงามเหนือกาลเวลา";
+const heroCtaText = homePageData?.heroCtaText || "เลือกชมคอลเลคชั่นของเรา";
+const heroCtaLink = homePageData?.heroCtaLink || "/shop";
+let heroImgSrc: any = heroImage;
+let heroImgAlt = "กระเป๋าหนังแท้แฮนด์เมด";
+if (homePageData?.heroImage) {
+  heroImgSrc = urlFor(homePageData.heroImage).width(500).quality(95).url();
+  heroImgAlt = homePageData.heroImage.alt || heroImgAlt;
+}
+
+// Categories
+const categoryTitle = homePageData?.categoryTitle || "เลือกชมสินค้าตามหมวดหมู่";
+const categoryDescription = homePageData?.categoryDescription || "ค้นหาสินค้าที่ใช่ในสไตล์ที่เป็นคุณ";
+
+// Map Sanity categories to the format expected by the template, or use fallback if empty
+let categories = [
+  { name: 'พวงกุญแจหนัง', href: '/keychain', image: categoryKeychain },
+  { name: 'กระเป๋าถือ', href: '/handbag', image: categoryHandbag },
+  { name: 'กระเป๋าสะพาย', href: '/shoulder-bag', image: categoryShoulderBag },
+  { name: 'กระเป๋าสตางค์', href: '/wallet', image: categoryWallet },
+  { name: 'กระเป๋าเป้', href: '/backpack', image: categoryBackpack },
+  { name: 'กระเป๋าคาดอก', href: '/chest-bag', image: categoryChestBag },
+  { name: 'เข็มขัด', href: '/belt', image: categoryBelt },
+  { name: 'สินค้าจิปาถะ', href: '/etc', image: categoryEtc },
+];
+
+if (sanityCategories && sanityCategories.length > 0) {
+  categories = sanityCategories.map((cat: any) => ({
+    name: cat.title,
+    href: `/${cat.slug}`,
+    image: cat.image ? urlFor(cat.image).width(200).quality(95).url() : categoryEtc
+  }));
+}
+
+// Showcase Section (Featured Products)
+const showcaseTitle = homePageData?.showcaseTitle || "สินค้าแนะนำ";
+const showcaseDescription = homePageData?.showcaseDescription || "ผลงานที่เราคัดสรรมาเป็นพิเศษและได้รับความนิยมสูงสุด";
+let sampleProducts = [
+  { name: 'กระเป๋าสตางค์หนังวัวแท้ รุ่น Classic', category: 'กระเป๋าสตางค์', image: productWallet, href: '#' },
+  { name: 'กระเป๋าสะพายข้างหนังออย', category: 'กระเป๋าสะพาย', image: productCrossbody, href: '#' },
+  { name: 'พวงกุญแจหนังแท้ เชอร์รี่', category: 'พวงกุญแจหนัง', image: productKeychain, href: '#' },
+  { name: 'ที่ห้อยกระเป๋าหนังแท้', category: 'พวงกุญแจหนัง', image: productBagCharm, href: '#' },
+];
+
+if (homePageData?.featuredProducts && homePageData.featuredProducts.length > 0) {
+  sampleProducts = homePageData.featuredProducts.map((prod: any) => ({
+    name: prod.name,
+    category: prod.category,
+    image: prod.image ? urlFor(prod.image).width(250).quality(95).url() : productWallet,
+    href: `/${prod.slug}`
+  }));
+}
+
+// Crafting Section
+const craftingTitle = homePageData?.craftingTitle || "จากผืนหนังสู่ผลงานศิลป์: เรื่องราวเบื้องหลัง";
+const craftingDescription = homePageData?.craftingDescription || "งานเย็บมือ (Hand-stitched) คือหัวใจของเครื่องหนังระดับพรีเมียม ทุกฝีเข็มที่บรรจงเย็บลงไป ไม่เพียงแต่ให้ความสวยงามและความแข็งแรงที่เหนือกว่างานจักร แต่ยังเป็นการใส่จิตวิญญาณของช่างฝีมือลงไปในชิ้นงานอีกด้วย";
+const craftingCtaText = homePageData?.craftingCtaText || "อ่านบทความของเรา";
+const craftingCtaLink = homePageData?.craftingCtaLink || "/content";
+let craftingImgSrc: any = craftingImage;
+let craftingImgAlt = "ช่างฝีมือกำลังเย็บขอบกระเป๋าหนังแท้";
+if (homePageData?.craftingImage) {
+  craftingImgSrc = urlFor(homePageData.craftingImage).width(500).quality(95).url();
+  craftingImgAlt = homePageData.craftingImage.alt || craftingImgAlt;
+}
+
+// Custom Order Section
+const customOrderTitle = homePageData?.customOrderTitle || "รับผลิตของชำร่วยหนังแท้ สั่งทำพิเศษ";
+const customOrderDescription = homePageData?.customOrderDescription || "มอบของที่ระลึกสุดพรีเมียมในทุกโอกาสสำคัญ ไม่ว่าจะเป็นของชำร่วยงานแต่ง, งานเกษียณ, หรืองานบริษัท เราพร้อมให้คำปรึกษาและออกแบบ สลักชื่อหรือโลโก้ได้ในราคาโรงงาน เพื่อสร้างความประทับใจไม่รู้ลืม";
+const customOrderCtaText = homePageData?.customOrderCtaText || "ชมตัวอย่างผลงานของเรา";
+const customOrderCtaLink = homePageData?.customOrderCtaLink || "/portfolio";
+let customOrderImgSrc: any = customOrdersImage;
+let customOrderImgAlt = "ตัวอย่างของชำร่วยเครื่องหนังแท้สั่งทำพิเศษ";
+if (homePageData?.customOrderImage) {
+  customOrderImgSrc = urlFor(homePageData.customOrderImage).width(500).quality(95).url();
+  customOrderImgAlt = homePageData.customOrderImage.alt || customOrderImgAlt;
+}
+
+// Testimonials
+const testimonialTitle = homePageData?.testimonialTitle || "เสียงตอบรับจากลูกค้าของเรา";
+const testimonials = homePageData?.testimonials || [
+  { quote: 'หนังนุ่มมากครับ งานเย็บละเอียดจริงๆ สมกับเป็นงานแฮนด์เมดเลย', author: 'คุณธนพล' },
+  { quote: 'ใช้มาปีกว่าแล้ว หนังสวยขึ้นเรื่อยๆ เลยครับ ทนทานมาก ไม่ผิดหวัง', author: 'คุณสิรินยา' },
+  { quote: 'สั่งทำกระเป๋าตามแบบที่อยากได้ ร้านให้คำแนะนำดีมาก ได้ของตรงใจเป๊ะ', author: 'คุณวิชัย' },
+];
+
+// SEO
+const pageTitle = homePageData?.seo?.seoTitle || "พวงกุญแจหนัง ของชำร่วยหนังแท้ รับสั่งทำ | กระเป๋าหนังแท้ Sabuykapao";
+const pageDescription = homePageData?.seo?.seoDescription || "พวงกุญแจหนังแท้และเครื่องหนังแฮนด์เมดคุณภาพจาก Sabuykapao พร้อมบริการรับสั่งทำของชำร่วยหนังพรีเมียมสำหรับคนพิเศษและองค์กรของคุณ";
+// Use OG image from Sanity SEO settings, or hero image as fallback
+const pageOgImage = homePageData?.seo?.ogImage?.asset?.url || 
+  (homePageData?.heroImage ? urlFor(homePageData.heroImage).width(1200).height(630).fit('crop').quality(95).url() : 
+  typeof heroImgSrc === 'string' ? heroImgSrc : null);
+
+---
+<Layout 
+  title={pageTitle}
+  description={pageDescription}
+  ogImage={pageOgImage}
+>
+  <!-- Preconnect to Sanity CDN -->
+  <link slot="head" rel="preconnect" href="https://cdn.sanity.io" />
+  
+  <!-- Preload hero image for LCP with responsive support -->
+  <link 
+    slot="head" 
+    rel="preload" 
+    as="image" 
+    href={typeof heroImgSrc === 'string' ? heroImgSrc : heroImgSrc.src} 
+    imagesrcset={
+      homePageData?.heroImage 
+        ? `${urlFor(homePageData.heroImage).width(250).quality(95).url()} 250w, ${urlFor(homePageData.heroImage).width(400).quality(95).url()} 400w, ${urlFor(homePageData.heroImage).width(500).quality(95).url()} 500w`
+        : undefined
+    }
+    imagesizes="(max-width: 640px) 350px, 500px"
+    fetchpriority="high" 
+  />
+
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://sabuykapao.com/#organization",
+          "name": "SabuyKapao",
+          "url": "https://sabuykapao.com/",
+          "logo": "https://sabuykapao.com/sabuykapao-logo.svg",
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "+66-84-095-4445",
+            "contactType": "Customer Service"
+          },
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "337/2 หมู่ 4 ทางหลวงแผ่นดินหมายเลข 325, ตำบลดอนกรวย",
+            "addressLocality": "ดำเนินสะดวก",
+            "addressRegion": "ราชบุรี",
+            "postalCode": "70130",
+            "addressCountry": "TH"
+          },
+          "sameAs": [
+            "https://www.facebook.com/sabuykapao",
+            "https://line.me/ti/p/@sabuykapao",
+            "https://www.tiktok.com/@sabuykapao",
+            "https://shopee.co.th/sabuykapao"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://sabuykapao.com/#website",
+          "url": "https://sabuykapao.com/",
+          "publisher": { "@id": "https://sabuykapao.com/#organization" },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://sabuykapao.com/search?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        }
+      ]
+    })} />
+  </Fragment>
+  
+  <main class="home-page">
+  <section class="hero-section">
+    <div class="container hero-section__grid">
+      <div class="hero-section__content">
+        <h1>{heroTitle}</h1>
+        <p>{heroDescription}</p>
+        <a href={heroCtaLink} class="cta-button">{heroCtaText}</a>
+      </div>
+      <div class="hero-section__image">
+        <img 
+          src={typeof heroImgSrc === 'string' ? heroImgSrc : heroImgSrc.src} 
+          srcset={
+            homePageData?.heroImage 
+              ? `${urlFor(homePageData.heroImage).width(250).quality(95).url()} 250w, ${urlFor(homePageData.heroImage).width(400).quality(95).url()} 400w, ${urlFor(homePageData.heroImage).width(500).quality(95).url()} 500w`
+              : undefined
+          }
+          sizes="(max-width: 640px) 350px, 500px"
+          alt={heroImgAlt} 
+          width="500" 
+          height="500" 
+          loading="eager" 
+          decoding="async" 
+          fetchpriority="high" 
+          style="width: 100%; height: auto; border-radius: 12px;" 
+        />
+      </div>
+    </div>
+  </section>
+
+  <section class="category-section">
+    <div class="container">
+      <div class="category-section__box">
+        <div class="section-header">
+          <h2>{categoryTitle}</h2>
+          <p>{categoryDescription}</p>
+        </div>
+        <div class="category-grid">
+          {categories.map((category, index) => (
+            <div class="category-card">
+              <a href={category.href} class="category-card__image-link">
+                <img 
+                  src={typeof category.image === 'string' ? category.image : category.image.src} 
+                  srcset={
+                    typeof category.image === 'string' && category.image.includes('cdn.sanity.io')
+                      ? `${category.image.replace('w=400', 'w=138')} 138w, ${category.image.replace('w=400', 'w=150')} 150w`
+                      : undefined
+                  }
+                  sizes="(max-width: 640px) 138px, 150px"
+                  alt={category.name} 
+                  width="150" 
+                  height="150" 
+                  loading={index < 4 ? "eager" : "lazy"}
+                  fetchpriority={index < 2 ? "high" : "auto"}
+                  style="width: 100%; height: auto;" 
+                />
+              </a>
+              <h3 class="category-card__name">{category.name}</h3>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="showcase-section">
+    <div class="container">
+      <div class="section-header">
+        <h2>{showcaseTitle}</h2>
+        <p>{showcaseDescription}</p>
+      </div>
+      <div class="product-grid">
+        {sampleProducts.map((product, index) => (
+          <div class="product-card">
+            <div class="product-card__image-wrapper">
+              <img 
+                src={typeof product.image === 'string' ? product.image : product.image.src} 
+                srcset={
+                  typeof product.image === 'string' && product.image.includes('cdn.sanity.io')
+                    ? `${product.image.replace('w=500', 'w=170')} 170w, ${product.image.replace('w=500', 'w=180')} 180w`
+                    : undefined
+                }
+                sizes="(max-width: 640px) 170px, 180px"
+                alt={product.name} 
+                width="180" 
+                height="180" 
+                loading={index < 4 ? "eager" : "lazy"}
+                fetchpriority={index < 2 ? "high" : "auto"}
+                style="width: 100%; height: auto;" 
+              />
+            </div>
+            <h3 class="product-card__name">{product.name}</h3>
+            <p class="product-card__category">{product.category}</p>
+            <a href={product.href} class="product-card__link">ดูรายละเอียด &rarr;</a>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="crafting-section">
+    <div class="container crafting-section__grid">
+      <div class="crafting-section__image">
+        <img 
+          src={craftingImgSrc} 
+          srcset={
+            homePageData?.craftingImage
+              ? `${urlFor(homePageData.craftingImage).width(250).quality(95).url()} 250w, ${urlFor(homePageData.craftingImage).width(400).quality(95).url()} 400w, ${urlFor(homePageData.craftingImage).width(500).quality(95).url()} 500w`
+              : undefined
+          }
+          sizes="(max-width: 640px) 350px, 500px"
+          alt={craftingImgAlt} 
+          width="500" 
+          height="500" 
+          loading="lazy" 
+          style="width: 100%; height: auto; border-radius: 12px;" 
+        />
+      </div>
+      <div class="crafting-section__content">
+        <h2>{craftingTitle}</h2>
+        <p>{craftingDescription}</p>
+        <a href={craftingCtaLink} class="cta-button">{craftingCtaText}</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="custom-order-section">
+    <div class="container custom-order-section__grid">
+      <div class="custom-order-section__image">
+        <img src={customOrderImgSrc} alt={customOrderImgAlt} width="400" height="400" loading="lazy" style="width: 100%; height: auto; border-radius: 12px;" />
+      </div>
+      <div class="custom-order-section__content">
+        <h2>{customOrderTitle}</h2>
+        <p>
+          {customOrderDescription}
+        </p>
+        <a href={customOrderCtaLink} class="cta-button">
+          {customOrderCtaText}
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="testimonial-section">
+    <div class="container">
+      <div class="section-header">
+        <h2>{testimonialTitle}</h2>
+      </div>
+      <div class="testimonial-grid">
+        {testimonials.map((item: any) => (
+          <div class="testimonial-card">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="testimonial-card__icon">
+              <path fill-rule="evenodd" d="M4.804 21.644A6.707 6.707 0 006 21.75a6.721 6.721 0 003.583-1.029c.774.182 1.584.279 2.417.279 5.352 0 9.75-3.67 9.75-8.25s-4.398-8.25-9.75-8.25S2.25 7.87 2.25 12.42c0 1.79.585 3.455 1.554 4.804a.75.75 0 00.19 1.01l-.002.002a.75.75 0 00.28.112l.003.001zM7.004 15a5.23 5.23 0 00-1.004-2.475.75.75 0 00-1.29-.756A6.978 6.978 0 013.75 12.42c0-3.81 3.69-6.9 8.25-6.9s8.25 3.09 8.25 6.9-3.69 6.9-8.25 6.9a8.21 8.21 0 01-2.417-.33.75.75 0 00-.635.057l-1.834 1.1a.75.75 0 01-1.003-.217z" clip-rule="evenodd" />
+            </svg>
+            <p>"{item.quote}"</p>
+            <footer>- {item.author}</footer>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+  </main>
+</Layout>

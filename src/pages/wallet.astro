@@ -1,0 +1,157 @@
+---
+// src/pages/wallet.astro
+import { Image } from 'astro:assets';
+import Layout from '../layouts/Layout.astro';
+import '../styles/pages/_category-page.scss';
+import { client } from '../lib/sanityClient.js';
+import { generateCollectionSchema } from '../lib/schema/generateCollectionSchema.js';
+import { mapProductsToSchema } from '../lib/schema/mapProductToSchema.js';
+
+// ===== Listing config =====
+const CATEGORY_SLUG = 'wallet';
+const PAGE_SIZE = 28; // 28 ชิ้นต่อหน้า ของสคริปต์ build
+
+// ดึงข้อมูล SEO จาก Sanity
+const categoryQuery = `*[_type == "category" && slug.current == $cat][0]{
+  title,
+  description,
+  categoryHeader,
+  categoryDetails[],
+  seo {
+    seoTitle,
+    seoDescription,
+    ogTitle,
+    ogDescription,
+    ogImage
+  }
+}`;
+const categoryData = await client.fetch(categoryQuery, { cat: CATEGORY_SLUG });
+
+// นับทั้งหมดเพื่อคำนวณจำนวนหน้า
+const countQuery = `count(*[_type == "product" && $cat in categories[]->slug.current])`;
+const total = await client.fetch(countQuery, { cat: CATEGORY_SLUG });
+const totalPages = Math.max(1, Math.ceil((Number(total) || 0) / PAGE_SIZE));
+
+// ดึง "เฟรมแรก" 16 ชิ้น (SSG เสมอ) — หน้าอื่นโหลดด้วย JSON (client)
+const itemsQuery = `*[_type == "product" && $cat in categories[]->slug.current]
+  | order(_createdAt desc)
+  [0...$limit]{
+    name,
+    price,
+    "imageUrl": image.asset->url,
+    "alt": coalesce(image.alt, name),
+    "slug": slug.current
+  }`;
+const products = await client.fetch(itemsQuery, { cat: CATEGORY_SLUG, limit: PAGE_SIZE });
+
+// ====== JSON-LD (ใช้ตัวสร้างสคีมากลาง) ======
+const site = Astro.site?.href || 'https://sabuykapao.com';
+const pageUrl = Astro.url.href;
+
+const breadcrumb = [
+  { name: 'หน้าแรก', url: '/' },
+  { name: 'กระเป๋าสตางค์', url: '/wallet' },
+];
+
+// ใช้ reusable function สำหรับแปลง products เป็น schema format
+// รองรับ dynamic data และ pagination อัตโนมัติ (จำกัดแค่ 16 ชิ้นแรก)
+const items = mapProductsToSchema(products, site, 16);
+
+// ใช้ SEO data จาก Sanity หรือ fallback เป็นข้อมูลเดิม
+const pageTitle = categoryData?.seo?.seoTitle || categoryData?.title || 'กระเป๋าสตางค์หนังแท้ สำหรับชายและหญิง | SabuyKapao';
+const pageDescription = categoryData?.seo?.seoDescription || categoryData?.description || 'กระเป๋าสตางค์หนังแท้หลากหลายรูปแบบสำหรับผู้ชายและผู้หญิง ผลิตจากหนังวัวคุณภาพสูง ทนทาน ใช้งานได้นาน ดูมีสไตล์';
+// OG Image: ใช้ SEO image จาก Sanity หรือ fallback เป็นรูปสินค้าชิ้นแรก
+const pageOgImage = categoryData?.seo?.ogImage?.asset?.url || products?.[0]?.imageUrl;
+
+const schema = generateCollectionSchema({
+  pageType: 'productCategory',
+  site,
+  pageTitle,
+  pageDescription,
+  pageUrl,
+  breadcrumb,
+  items,
+});
+---
+<Layout 
+  title={pageTitle}
+  description={pageDescription}
+  ogImage={pageOgImage}
+  ogType="website"
+>
+  <Fragment slot="head">
+    <!-- JSON-LD: CollectionPage + BreadcrumbList + ItemList(Product) -->
+    <script type="application/ld+json" set:html={schema} />
+    <!-- Preconnect to Sanity CDN -->
+    <link rel="preconnect" href="https://cdn.sanity.io" />
+    <!-- Preload first product image for LCP -->
+    {products[0]?.imageUrl && (
+      <link 
+        rel="preload" 
+        as="image" 
+        href={`${products[0].imageUrl}?w=300&h=300&fit=crop&q=90&auto=format`}
+        imagesrcset={`
+          ${products[0].imageUrl}?w=180&h=180&fit=crop&q=90&auto=format 180w,
+          ${products[0].imageUrl}?w=300&h=300&fit=crop&q=90&auto=format 300w
+        `}
+        imagesizes="(max-width: 640px) 180px, (max-width: 1024px) 240px, 300px"
+        fetchpriority="high" 
+      />
+    )}
+  </Fragment>
+
+  <main class="category-page">
+    <div class="container">
+      <div class="category-header">
+        <h1>{categoryData?.categoryHeader?.title || 'กระเป๋าสตางค์'}</h1>
+        <p>{categoryData?.categoryHeader?.description || 'กระเป๋าสตางค์หนังของเรามีให้เลือกหลากหลายรูปแบบ ตอบโจทย์ทุกความต้องการของคุณอย่างแน่นอน ทุกชิ้นผลิตจากหนังวัวแท้คุณภาพสูง มั่นใจได้ในความทนทานและสวยงาม'}</p>
+      </div>
+
+      <div class="product-grid-container">
+        <!-- เติม data-list เพื่อ hook สคริปต์ โดยไม่เปลี่ยนโครง -->
+        <div class="product-grid" data-list>
+          {products.map((product, index) => (
+            <a href={`/${product.slug}`} class="product-card" data-slug={product.slug}>
+              <div class="product-card__image-wrapper">
+                {product.imageUrl && (
+                  <img
+                    src={`${product.imageUrl}?w=300&h=300&fit=crop&q=90&auto=format`}
+                    srcset={`
+                      ${product.imageUrl}?w=180&h=180&fit=crop&q=90&auto=format 180w,
+                      ${product.imageUrl}?w=300&h=300&fit=crop&q=90&auto=format 300w
+                    `}
+                    sizes="(max-width: 640px) 180px, (max-width: 1024px) 240px, 300px"
+                    alt={product.alt || product.name}
+                    width="300"
+                    height="300"
+                    loading={index < 3 ? 'eager' : 'lazy'}
+                    decoding="async"
+                    fetchpriority={index < 3 ? 'high' : 'auto'}
+                  />
+                )}
+              </div>
+              <div class="product-card__info">
+                <h3 class="product-card__name">{product.name}</h3>
+                {typeof product.price === 'number' && (
+                  <p class="product-card__price">{new Intl.NumberFormat('th-TH').format(product.price)} บาท</p>
+                )}
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+
+
+      {categoryData?.categoryDetails && categoryData.categoryDetails.length > 0 && (
+        <div class="category-description">
+          {categoryData.categoryDetails.map((section) => (
+            <>
+              <h2>{section.heading}</h2>
+              <p>{section.content}</p>
+            </>
+          ))}
+        </div>
+      )}
+    </div>
+  </main>
+</Layout>

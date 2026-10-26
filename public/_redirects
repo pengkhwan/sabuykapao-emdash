@@ -1,0 +1,11 @@
+# Cloudflare Pages Redirects
+# Format: source destination status-code
+
+# Force HTTPS (Cloudflare usually handles this, but explicit is better)
+http://sabuykapao.com/* https://sabuykapao.com/:splat 301
+http://www.sabuykapao.com/* https://sabuykapao.com/:splat 301
+
+# Redirect www to non-www (if you prefer non-www)
+https://www.sabuykapao.com/* https://sabuykapao.com/:splat 301
+
+# Legacy redirects will be appended by generate-redirects.js during build

@@ -1,0 +1,223 @@
+---
+// src/components/ProductSchema.astro
+interface Props {
+  product: any;
+  baseUrl?: string; // เผื่ออยากกำหนด origin เอง เช่น https://example.com
+}
+const { product, baseUrl } = Astro.props;
+
+// URL หน้าปัจจุบัน / ตกแต่งสำรองจาก site+slug
+const site = (Astro.site ?? baseUrl)?.toString().replace(/\/$/, '') || '';
+const pageUrl =
+  (typeof Astro.url?.href === 'string' && Astro.url.href) ||
+  (site && product?.slug?.current ? `${site}/${product.slug.current}` : undefined);
+
+// ชื่อ/คำอธิบาย
+const name =
+  product?.seo?.title ||
+  product?.title ||
+  product?.name ||
+  '';
+
+const description =
+  product?.seo?.description ||
+  product?.excerpt ||
+  product?.shortDescription ||
+  '';
+
+// รวมรูป: mainImageUrl + gallery (ถ้ามี)
+const images: string[] = [];
+if (product?.mainImageUrl) images.push(product.mainImageUrl);
+
+// (Removed extraction of images from description since it is now Markdown)
+
+// Add gallery images
+if (images.length === 1 && Array.isArray(product?.gallery)) {
+  for (const g of product.gallery) if (g?.url) images.push(g.url);
+}
+
+// Ensure production domain for all URLs
+const productionDomain = 'https://sabuykapao.com';
+const ensureAbsoluteUrl = (url: string) => {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `${productionDomain}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
+// ===== Build consolidated @graph JSON-LD =====
+const crumbs: Array<{ name: string; item?: string }> = [{ name: 'หน้าแรก', item: ensureAbsoluteUrl('/') }];
+
+const firstCat = product?.categories?.[0];
+if (firstCat?.title && firstCat?.slug) {
+  crumbs.push({ name: firstCat.title, item: ensureAbsoluteUrl(`/${firstCat.slug}`) });
+}
+
+if (name && pageUrl) {
+  crumbs.push({ name, item: ensureAbsoluteUrl(pageUrl) });
+}
+
+---
+{product?._type === 'product' && (() => {
+  const pageHref = typeof Astro.url?.href === 'string' ? Astro.url.href : (pageUrl ? ensureAbsoluteUrl(pageUrl) : '');
+  const productName = (product as any)?.ai_title || name;
+  const productDesc = (product as any)?.meta_description || description;
+  const mainImage = (product as any)?.mainImageUrl || images[0] || '';
+  const sku = (product as any)?.SKU || (product as any)?.sku || '';
+  const priceNum = typeof (product as any)?.price === 'number' && !Number.isNaN((product as any).price)
+    ? (product as any).price
+    : undefined;
+  // Force InStock as per user request (Available for Order)
+  const status = 'https://schema.org/InStock';
+  const catName = (product as any)?.categoryName || (product as any)?.categories?.[0]?.title || '';
+  const catSlug = (product as any)?.categorySlug || (product as any)?.categories?.[0]?.slug || '';
+
+  // Calculate priceValidUntil (1 year from today)
+  const today = new Date();
+  const nextYear = new Date(today);
+  nextYear.setFullYear(today.getFullYear() + 1);
+  const priceValidUntil = nextYear.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+
+  // Final product description with fallback
+  const finalProductDesc = productDesc || productName || '';
+
+  const graph = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": pageHref,
+        "url": pageHref,
+        ...(productName ? { "name": productName } : {}),
+        "isPartOf": { "@id": "https://sabuykapao.com/#website" },
+        ...(mainImage ? { "primaryImageOfPage": { "@id": `${pageHref}#primaryimage` } } : {}),
+        "breadcrumb": { "@id": `${pageHref}#breadcrumb` },
+        "mainEntity": { "@id": `${pageHref}#product` }
+      },
+      {
+        "@type": "Product",
+        "@id": `${pageHref}#product`,
+        "mainEntityOfPage": { "@id": pageHref },
+        ...(productName ? { "name": productName } : {}),
+        "image": [
+          // Loop ดึงรูปภาพทั้งหมดจาก images array
+          ...images.map((imgUrl, idx) => ({
+            "@type": "ImageObject",
+            "@id": `${pageHref}#image${idx}`,
+            "url": ensureAbsoluteUrl(imgUrl),
+            ...(productName ? { "caption": productName } : {})
+          }))
+        ],
+        "description": finalProductDesc,
+        ...(sku ? { "sku": sku } : {}),
+        "material": "Genuine Leather",
+        "brand": { 
+          "@type": "Brand",
+          "@id": "https://sabuykapao.com/#organization",
+          "name": "SabuyKapao"
+        },
+        ...(typeof priceNum === 'number' ? {
+          "offers": {
+            "@type": "Offer",
+            "priceCurrency": "THB",
+            "price": priceNum,
+            "priceValidUntil": priceValidUntil,
+            "url": pageHref,
+            "availability": status,
+            "itemCondition": "https://schema.org/NewCondition",
+            "hasMerchantReturnPolicy": {
+              "@type": "MerchantReturnPolicy",
+              "applicableCountry": "TH",
+              "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
+              "merchantReturnDays": 7,
+              "returnMethod": "https://schema.org/ReturnByMail",
+              "returnFees": "https://schema.org/FreeReturn"
+            },
+            "shippingDetails": {
+              "@type": "OfferShippingDetails",
+              "shippingRate": {
+                "@type": "MonetaryAmount",
+                "value": "50",
+                "currency": "THB"
+              },
+              "shippingDestination": {
+                "@type": "DefinedRegion",
+                "addressCountry": "TH"
+              },
+              "deliveryTime": {
+                "@type": "ShippingDeliveryTime",
+                "handlingTime": {
+                  "@type": "QuantitativeValue",
+                  "minValue": 0,
+                  "maxValue": 1,
+                  "unitCode": "DAY"
+                },
+                "transitTime": {
+                  "@type": "QuantitativeValue",
+                  "minValue": 2,
+                  "maxValue": 5,
+                  "unitCode": "DAY"
+                }
+              }
+            }
+          }
+        } : {})
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://sabuykapao.com/#organization",
+        "name": "SabuyKapao",
+        "url": "https://sabuykapao.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://sabuykapao.com/sabuykapao-logo.svg"
+        },
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "telephone": "+66-84-095-4445",
+          "contactType": "Customer Service"
+        },
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "337/2 หมู่ 4 ทางหลวงแผ่นดินหมายเลข 325, ตำบลดอนกรวย",
+          "addressLocality": "ดำเนินสะดวก",
+          "addressRegion": "ราชบุรี",
+          "postalCode": "70130",
+          "addressCountry": "TH"
+        },
+        "sameAs": [
+          "https://www.facebook.com/sabuykapao",
+          "https://line.me/ti/p/@sabuykapao",
+          "https://www.tiktok.com/@sabuykapao",
+          "https://shopee.co.th/sabuykapao"
+        ]
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": `${pageHref}#breadcrumb`,
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "หน้าแรก", "item": "https://sabuykapao.com/" },
+          ...(catName && catSlug ? [{
+            "@type": "ListItem",
+            "position": 2,
+            "name": catName,
+            "item": `https://sabuykapao.com/${catSlug}`
+          }] : []),
+          { "@type": "ListItem", "position": (catName && catSlug ? 3 : 2), "name": productName || '', "item": pageHref }
+        ]
+      },
+      ...(Array.isArray((product as any)?.faq) && (product as any).faq.length > 0 ? [{
+        "@type": "FAQPage",
+        "about": { "@id": `${pageHref}#product` },
+        "mainEntity": (product as any).faq.map((item: any) => ({
+          "@type": "Question",
+          "name": item?.question || '',
+          "acceptedAnswer": { "@type": "Answer", "text": item?.answer || '' }
+        }))
+      }] : [])
+    ]
+  };
+
+  return (
+    <script type="application/ld+json" set:html={JSON.stringify(graph)} />
+  );
+})()}

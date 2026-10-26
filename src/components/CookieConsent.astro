@@ -1,0 +1,292 @@
+---
+// src/components/CookieConsent.astro
+// Floating Glass Toast - PDPA Compliant Cookie Consent
+---
+
+<!-- Floating Cookie Toast (Hidden by default) -->
+<div id="cookie-banner" class="cookie-toast hidden">
+  <div class="toast-content">
+    <p class="toast-text">
+      SabuyKapao ใช้คุกกี้เพื่อมอบประสบการณ์การใช้งานเว็บไซต์ที่ดีที่สุดให้กับคุณ 
+      <a href="/privacy-policy" class="privacy-link">ดูรายละเอียดนโยบายความเป็นส่วนตัว</a>
+    </p>
+    
+    <div class="toast-actions">
+      <button id="btn-accept" class="btn-accept">
+        ยอมรับ
+      </button>
+      <button id="btn-decline" class="btn-close" aria-label="ปิด">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Floating Glass Toast */
+  .cookie-toast {
+    position: fixed;
+    z-index: 9999;
+    
+    /* Mobile: Above bottom nav */
+    bottom: 90px;
+    left: 1rem;
+    right: 1rem;
+    width: calc(100% - 2rem);
+    
+    /* Glass morphism effect */
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    
+    /* Styling */
+    border-radius: 1rem;
+    border: 1px solid rgba(231, 229, 228, 0.8);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.08);
+    
+    /* Animation setup */
+    transform: translateY(2.5rem);
+    opacity: 0;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Desktop: Bottom-left corner */
+  @media (min-width: 768px) {
+    .cookie-toast {
+      bottom: 1rem;
+      left: 1rem;
+      right: auto;
+      width: auto;
+      max-width: 28rem;
+    }
+  }
+
+  /* Visible state */
+  .cookie-toast:not(.hidden) {
+    display: flex;
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  /* Hidden state */
+  .cookie-toast.hidden {
+    display: none;
+    pointer-events: none;
+  }
+
+  /* Content container */
+  .toast-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    width: 100%;
+  }
+
+  @media (min-width: 640px) {
+    .toast-content {
+      gap: 1.5rem;
+      padding: 1.125rem 1.5rem;
+    }
+  }
+
+  /* Text */
+  .toast-text {
+    flex: 1;
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: #57534e;
+  }
+
+  @media (min-width: 640px) {
+    .toast-text {
+      font-size: 0.9375rem;
+    }
+  }
+
+  /* Privacy policy link */
+  .privacy-link {
+    color: #8B5E3C;
+    font-weight: 500;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    margin-left: 0.25rem;
+    transition: color 0.2s ease;
+    /* Enhanced touch target for mobile */
+    display: inline-block;
+    padding: 0.125rem 0.25rem;
+    margin: -0.125rem -0.25rem;
+  }
+
+  .privacy-link:hover {
+    color: #6F4B30;
+  }
+
+  .privacy-link:active {
+    color: #5A3D26;
+  }
+
+  /* Actions */
+  .toast-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    flex-shrink: 0;
+  }
+
+  /* Accept button */
+  .btn-accept {
+    background: #8B5E3C;
+    color: white;
+    padding: 0.5rem 1.25rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    white-space: nowrap;
+    line-height: 1.25;
+  }
+
+  .btn-accept:hover {
+    background: #6F4B30;
+  }
+
+  .btn-accept:active {
+    background: #5A3D26;
+    transform: scale(0.98);
+  }
+
+  /* Close button */
+  .btn-close {
+    background: none;
+    border: none;
+    color: #a8a29e;
+    cursor: pointer;
+    padding: 0.375rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    transition: color 0.2s ease, background-color 0.2s ease;
+  }
+
+  .btn-close:hover {
+    color: #78716c;
+    background: rgba(120, 113, 108, 0.1);
+  }
+
+  .btn-close:active {
+    color: #57534e;
+    background: rgba(87, 83, 78, 0.15);
+  }
+</style>
+
+<script>
+  // ===== Cookie Consent Logic (PDPA Compliant) =====
+  const CONSENT_KEY = 'sabuykapao_cookie_consent';
+  const CONSENT_VERSION = '1.0';
+
+  // Save consent to localStorage
+  function saveConsent(accepted) {
+    try {
+      const consentData = {
+        accepted: accepted,
+        timestamp: new Date().toISOString(),
+        version: CONSENT_VERSION
+      };
+      localStorage.setItem(CONSENT_KEY, JSON.stringify(consentData));
+      console.log(`Cookie consent ${accepted ? 'accepted' : 'declined'}`);
+    } catch (e) {
+      console.error('Error saving consent:', e);
+    }
+  }
+
+  // Check if consent already exists
+  function hasExistingConsent() {
+    try {
+      const consent = localStorage.getItem(CONSENT_KEY);
+      if (consent) {
+        const data = JSON.parse(consent);
+        // Validate version match
+        if (data.version === CONSENT_VERSION) {
+          if (data.accepted) {
+            // Initialize GTM if previously accepted
+            initializeGTM();
+          }
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      console.error('Error checking consent:', e);
+      return false;
+    }
+  }
+
+  // Initialize Google Tag Manager
+  function initializeGTM() {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      'event': 'cookie_consent_granted',
+      'consent_timestamp': new Date().toISOString()
+    });
+    console.log('✅ Cookie consent granted - GTM initialized');
+  }
+
+  // Hide banner immediately (with animation)
+  function hideBanner() {
+    const banner = document.getElementById('cookie-banner');
+    if (banner) {
+      banner.classList.add('hidden');
+    }
+  }
+
+  // Show banner with slide-up animation
+  function showBanner() {
+    const banner = document.getElementById('cookie-banner');
+    if (banner) {
+      banner.classList.remove('hidden');
+    }
+  }
+
+  // Initialize on DOM ready
+  document.addEventListener('DOMContentLoaded', () => {
+    const banner = document.getElementById('cookie-banner');
+    const acceptBtn = document.getElementById('btn-accept');
+    const declineBtn = document.getElementById('btn-decline');
+
+    // Check existing consent
+    const consentExists = hasExistingConsent();
+    
+    if (!consentExists) {
+      // Show banner after a short delay (smoother UX)
+      setTimeout(() => {
+        showBanner();
+      }, 500);
+    }
+
+    // Accept button - Save consent, initialize GTM, hide banner
+    if (acceptBtn) {
+      acceptBtn.addEventListener('click', () => {
+        saveConsent(true);
+        initializeGTM();
+        hideBanner();
+      });
+    }
+
+    // Decline button - Save decline, hide banner
+    if (declineBtn) {
+      declineBtn.addEventListener('click', () => {
+        saveConsent(false);
+        hideBanner();
+      });
+    }
+  });
+</script>

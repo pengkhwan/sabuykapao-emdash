@@ -1,0 +1,16 @@
+{
+  "name": "SabuyKapao - กระเป๋าผ้าทำมือ",
+  "short_name": "SabuyKapao",
+  "description": "กระเป๋าผ้าทำมือคุณภาพสูง ดีไซน์สวยงาม",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#8B4513",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

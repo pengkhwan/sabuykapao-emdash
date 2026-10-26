@@ -1,0 +1,160 @@
+---
+// src/pages/content/index.astro
+import { Image } from 'astro:assets';
+import Layout from '../../layouts/Layout.astro';
+import '../../styles/pages/_content.scss';
+import { client } from '../../lib/sanityClient.js';
+import { urlFor } from '../../lib/sanityImageUrl';
+import { generateCollectionSchema } from '../../lib/schema/generateCollectionSchema.js';
+import { mapArticlesToSchema } from '../../lib/schema/mapArticleToSchema.js';
+
+const PAGE_SIZE = 9;
+
+// Fetch content page settings (SEO)
+const contentPageData = await client.fetch(`*[_type == "contentPage"][0]{
+  seo{
+    seoTitle,
+    seoDescription,
+    ogImage{
+      asset->{
+        url
+      }
+    }
+  }
+}`);
+
+const pageTitle = contentPageData?.seo?.seoTitle || "บทความและสาระน่ารู้เกี่ยวกับเครื่องหนังแท้ | SabuyKapao";
+const pageDescription = contentPageData?.seo?.seoDescription || "แหล่งรวมบทความและสาระน่ารู้เกี่ยวกับเครื่องหนังแท้จาก SabuyKapao...";
+const pageOgImage = contentPageData?.seo?.ogImage?.asset?.url;
+
+// นับทั้งหมดเพื่อทำเลขหน้า
+const total = await client.fetch(`count(*[_type == "article" && defined(slug.current)])`);
+const totalPages = Math.max(1, Math.ceil((Number(total) || 0) / PAGE_SIZE));
+
+// ดึงหน้าแรก (SSR) - รวม date fields สำหรับ schema
+const articles = await client.fetch(`*[
+  _type == "article" && defined(slug.current) && (!defined(publishedAt) || publishedAt < now())
+] | order(coalesce(publishedAt, _createdAt) desc)[0...$limit]{
+  _id,
+  title,
+  slug,
+  excerpt,
+  featuredImage{asset, "alt": alt},
+  publishedAt,
+  _updatedAt,
+  _createdAt,
+  author->{name}
+}`, { limit: PAGE_SIZE });
+
+// ===== JSON-LD =====
+const site = Astro.site?.href || "https://sabuykapao.com";
+const pageUrl = new URL('/content/', site).href;
+
+// ใช้ reusable function สำหรับแปลง articles เป็น schema format
+// รองรับ dynamic data, date fields, และ author อัตโนมัติ
+const items = mapArticlesToSchema(articles, urlFor, site, 16);
+
+const breadcrumb = [
+  { name: "หน้าแรก", url: "/" },
+  { name: "บทความ", url: "/content/" },
+];
+
+const schema = generateCollectionSchema({
+  pageType: "blogIndex",
+  site,
+  pageTitle: pageTitle,
+  pageDescription: pageDescription,
+  pageUrl,
+  breadcrumb,
+  items,
+});
+---
+
+<Layout 
+  title={pageTitle}
+  description={pageDescription}
+  canonical="https://sabuykapao.com/content/"
+  ogImage={pageOgImage}
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={schema}></script>
+    <!-- Preconnect to Sanity CDN -->
+    <link rel="preconnect" href="https://cdn.sanity.io" />
+    <!-- Preload first article image for LCP -->
+    {articles[0]?.featuredImage && (
+      <link 
+        rel="preload" 
+        as="image" 
+        href={urlFor(articles[0].featuredImage).width(400).height(400).quality(90).format('webp').url()} 
+        imagesrcset={`
+          ${urlFor(articles[0].featuredImage).width(200).height(200).quality(90).format('webp').url()} 200w,
+          ${urlFor(articles[0].featuredImage).width(400).height(400).quality(90).format('webp').url()} 400w,
+
+        `}
+        imagesizes="(max-width: 480px) 50vw, 400px"
+        fetchpriority="high" 
+      />
+    )}
+  </Fragment>
+
+  <main class="content-page">
+    <div class="container">
+      <h1 class="page-title">บทความน่ารู้</h1>
+
+      <div class="content-grid" data-list>
+        {articles.map((article, index) => (
+          <article class="article-card" data-slug={article.slug.current}>
+            <a href={`/${article.slug.current}`} class="article-card__image-link">
+              {article.featuredImage ? (
+                <img
+                  src={urlFor(article.featuredImage).width(400).height(400).quality(90).format('webp').url()}
+                  srcset={`
+                    ${urlFor(article.featuredImage).width(200).height(200).quality(90).format('webp').url()} 200w,
+                    ${urlFor(article.featuredImage).width(400).height(400).quality(90).format('webp').url()} 400w
+                  `}
+                  sizes="(max-width: 640px) 200px, 400px"
+                  alt={article.featuredImage.alt || article.title}
+                  width="400"
+                  height="400"
+                  loading={index < 3 ? "eager" : "lazy"}
+                  decoding="async"
+                  fetchpriority={index < 3 ? "high" : "auto"}
+                />
+              ) : (
+                <div class="placeholder-image"></div>
+              )}
+            </a>
+            <div class="article-card__content">
+              <h2 class="article-card__title">
+                <a href={`/${article.slug.current}`}>{article.title}</a>
+              </h2>
+              {article.excerpt && <p class="article-card__excerpt">{article.excerpt}</p>}
+            </div>
+          </article>
+        ))}
+      </div>
+
+      {totalPages > 0 && (
+        <nav class="pagination">
+          {/* หน้า 1 คือ current */}
+          <a href="/content" class="pagination__link current" data-nextpage="1">1</a>
+
+          {/* หน้า 2..N ใส่ data-json-base ให้โหลดเพิ่ม/สลับหน้าได้ */}
+          {Array.from({ length: totalPages - 1 }).map((_, i) => {
+            const p = i + 2;
+            return (
+              <a
+                href={`/content/${p}`}
+                class="pagination__link"
+                data-nextpage={String(p)}
+                data-json-base="/data/content/page-"
+              >
+                {p}
+              </a>
+            );
+          })}
+        </nav>
+      )}
+    </div>
+  </main>
+</Layout>

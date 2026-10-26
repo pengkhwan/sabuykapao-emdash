@@ -1,0 +1,106 @@
+---
+// src/components/PurchaseBox.astro
+interface Props {
+  product: any;
+}
+const { product } = Astro.props;
+
+// ชื่อสินค้าที่ใช้ในข้อความ (กันเคสไม่มี name)
+const productTitle =
+  product?.name ??
+  product?.title ??
+  'สินค้าของทางร้าน';
+
+// ฟอร์แมตราคาและ fallback
+const isNumber = typeof product?.price === 'number' && !Number.isNaN(product.price);
+const priceText = isNumber
+  ? `${new Intl.NumberFormat('th-TH').format(product.price)} บาท`
+  : 'สอบถามราคา';
+
+// ช่องทางติดต่อ
+const facebookPageUsername = 'marah5g';
+const lineOA_ID = '@marah5g';
+const message = `สวัสดีครับ สนใจสินค้า: ${productTitle}`;
+const encodedMessage = encodeURIComponent(message);
+
+// ใช้ https และกันอักขระพิเศษด้วย encodeURIComponent
+const facebookLink = `https://m.me/${facebookPageUsername}?ref=${encodedMessage}`;
+const lineLink = `https://line.me/R/oaMessage/${encodeURIComponent(lineOA_ID)}/?text=${encodedMessage}`;
+---
+<div class="purchase-box" aria-label="กล่องสั่งซื้อสินค้า">
+  <div class="price">{priceText}</div>
+
+  {product?.shopeeUrl && (
+    <a href={product.shopeeUrl} target="_blank" rel="noopener noreferrer" class="purchase-button shopee" aria-label="สั่งซื้อผ่าน Shopee">
+      <img src="/icons/icon-shopee.svg" alt="สั่งซื้อผ่าน Shopee" width="24" height="24" />
+      <span>สั่งซื้อผ่าน Shopee</span>
+    </a>
+  )}
+
+  {product?.lazadaUrl && (
+    <a href={product.lazadaUrl} target="_blank" rel="noopener noreferrer" class="purchase-button lazada" aria-label="สั่งซื้อผ่าน Lazada">
+      <img src="/icons/icon-lazada.svg" alt="สั่งซื้อผ่าน Lazada" width="24" height="24" />
+      <span>สั่งซื้อผ่าน Lazada</span>
+    </a>
+  )}
+
+  {product?.tiktokUrl && (
+    <a href={product.tiktokUrl} target="_blank" rel="noopener noreferrer" class="purchase-button tiktok" aria-label="สั่งซื้อผ่าน TikTok">
+      <img src="/icons/icon-tiktok-color.svg" alt="สั่งซื้อผ่าน TikTok" width="24" height="24" />
+      <span>สั่งซื้อผ่าน TikTok</span>
+    </a>
+  )}
+
+  <a href={facebookLink} target="_blank" rel="noopener noreferrer" class="purchase-button facebook" aria-label="สั่งซื้อผ่าน Facebook Messenger">
+    <img src="/icons/icon-facebook-messenger.svg" alt="สั่งซื้อผ่าน Facebook Messenger" width="24" height="24" />
+    <span>สั่งซื้อผ่าน Facebook</span>
+  </a>
+
+  <a href={lineLink} target="_blank" rel="noopener noreferrer" class="purchase-button line" aria-label="สั่งซื้อผ่าน LINE">
+    <img src="/icons/icon-line-color.svg" alt="สั่งซื้อผ่าน LINE" width="24" height="24" />
+    <span>สั่งซื้อผ่าน Line</span>
+  </a>
+</div>
+
+<style lang="scss">
+  @use '../styles/variables' as var;
+  @use 'sass:color';
+
+  .purchase-box {
+    border: 1px solid var.$clr-bg-secondary;
+    background-color: var.$clr-bg-box;
+    padding: 1.5rem;
+    border-radius: 12px;
+    text-align: center;
+  }
+  .price {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var.$clr-text-heading;
+    font-family: var.$font-heading;
+    margin-bottom: 1.5rem;
+    line-height: 1.2;
+  }
+  .purchase-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    border-radius: 8px;
+    color: #fff;
+    font-family: var.$font-heading;
+    font-weight: 700;
+    transition: opacity 0.2s ease;
+    &:last-child { margin-bottom: 0; }
+    &:hover { opacity: 0.9; color: #fff; }
+    img { filter: brightness(0) invert(1); }
+    &.shopee { background-color: #EE4D2D; }
+    &.lazada { background-color: #10156C; }
+    &.tiktok { background-color: #000; }
+    &.facebook { background-color: #0866FF; }
+    &.line { background-color: #06C755; }
+  }
+</style>

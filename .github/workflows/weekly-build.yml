@@ -1,0 +1,16 @@
+name: Weekly Build Scheduler
+
+on:
+  schedule:
+    # ตั้งเวลา: ทุกวันจันทร์ เวลา 07:00 น. ประเทศไทย (คือ 00:00 UTC)
+    - cron: '0 0 * * 1'
+  workflow_dispatch: # ใส่ไว้เพื่อให้มีปุ่มกดรันเองได้ด้วย (เผื่อเทส)
+
+jobs:
+  trigger_build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Cloudflare Pages Build
+        run: |
+          # บรรทัดนี้จะดึงค่าจากตู้เซฟมาใช้ โดยไม่โชว์ใน Log
+          curl -X POST "${{ secrets.CF_DEPLOY_HOOK }}"

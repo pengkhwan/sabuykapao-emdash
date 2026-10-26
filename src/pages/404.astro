@@ -1,0 +1,101 @@
+---
+// src/pages/404.astro
+import Layout from '../layouts/Layout.astro';
+
+const title = "404 - ไม่พบหน้าที่คุณต้องการ | SabuyKapao";
+const description = "ขออภัย เราไม่พบหน้าที่คุณกำลังค้นหา อาจมีการเปลี่ยนแปลงลิงก์หรือหน้านี้ถูกลบไปแล้ว";
+---
+
+<Layout title={title} description={description}>
+  <!-- ไม่ให้ Google index หน้า 404 -->
+  <meta slot="head" name="robots" content="noindex, nofollow" />
+  
+  <main class="not-found-page">
+    <div class="container">
+      <div class="content">
+        <h1 class="error-code">404</h1>
+        <h2 class="error-title">ไม่พบหน้าที่คุณต้องการ</h2>
+        <p class="error-description">
+          ขออภัย เราไม่พบหน้าที่คุณกำลังค้นหา<br />
+          อาจมีการเปลี่ยนแปลงลิงก์ หรือหน้านี้ถูกลบไปแล้ว
+        </p>
+        <a href="/" class="btn-home">กลับสู่หน้าแรก</a>
+      </div>
+    </div>
+  </main>
+</Layout>
+
+<style lang="scss">
+  @use '../styles/variables' as *;
+
+  .not-found-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh; // ให้เนื้อหาอยู่กลางๆ จอ ไม่ชิดบนเกินไป
+    padding: 4rem 1rem;
+    background-color: $clr-bg-primary;
+    text-align: center;
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .error-code {
+      font-family: $font-heading;
+      font-size: 8rem;
+      font-weight: 700;
+      line-height: 1;
+      color: $clr-accent; // ใช้สี Accent ให้เด่น
+      margin-bottom: 1rem;
+      opacity: 0.8;
+    }
+
+    .error-title {
+      font-family: $font-heading;
+      font-size: 2rem;
+      color: $clr-text-heading;
+      margin-bottom: 1.5rem;
+    }
+
+    .error-description {
+      font-family: $font-body;
+      font-size: 1.1rem;
+      color: $clr-text-body;
+      line-height: 1.6;
+      margin-bottom: 2.5rem;
+      color: $clr-text-muted;
+    }
+
+    .btn-home {
+      display: inline-block;
+      padding: 0.75rem 2rem;
+      background-color: $clr-text-heading; // สีหลักของแบรนด์
+      color: #fff;
+      text-decoration: none;
+      border-radius: 4px;
+      font-family: $font-heading;
+      font-weight: 500;
+      transition: all 0.3s ease;
+
+      &:hover {
+        background-color: $clr-accent; // เปลี่ยนเป็นสี Accent เมื่อ Hover
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+    }
+  }
+
+  // Responsive adjustments
+  @media (max-width: 768px) {
+    .not-found-page {
+      .error-code {
+        font-size: 6rem;
+      }
+      .error-title {
+        font-size: 1.5rem;
+      }
+    }
+  }
+</style>

@@ -1,0 +1,35 @@
+{
+  "name": "sabuykapao-sass",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build && node scripts/generate-redirects.js && npx pagefind --site dist",
+    "preview": "astro preview",
+    "astro": "astro",
+    "lighthouse": "unlighthouse --site https://sabuykapao.com",
+    "lighthouse:local": "unlighthouse --site http://localhost:4321"
+  },
+  "dependencies": {
+    "@astrojs/partytown": "^2.1.4",
+    "@astrojs/sitemap": "^3.7.0",
+    "@astrojs/svelte": "^7.2.5",
+    "@portabletext/svelte": "^3.0.1",
+    "@portabletext/to-html": "^2.0.14",
+    "@sanity/client": "^7.8.2",
+    "@sanity/image-url": "^1.1.0",
+    "astro": "^5.17.2",
+    "astro-portabletext": "^0.11.1",
+    "isomorphic-dompurify": "^2.35.0",
+    "marked": "^17.0.0",
+    "svelte": "^5.38.2",
+    "typescript": "^5.9.2"
+  },
+  "devDependencies": {
+    "@playform/compress": "^0.2.1",
+    "astro-critters": "^2.2.1",
+    "astro-purgecss": "^5.5.0",
+    "pagefind": "^1.4.0",
+    "sass": "^1.90.0"
+  }
+}

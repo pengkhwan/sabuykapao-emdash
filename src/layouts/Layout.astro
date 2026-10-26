@@ -1,0 +1,112 @@
+---
+// src/layouts/Layout.astro
+import '../styles/global.scss';
+import Header from '../components/Header.svelte';
+import Footer from '../components/Footer.astro';
+import MobileNav from '../components/MobileNav.astro';
+import CustomSEO from '../components/CustomSEO.astro';
+import Search from '../components/Search.astro';
+import CookieConsent from '../components/CookieConsent.astro';
+import { client } from '../lib/sanityClient.js';
+
+interface Props {
+  title: string;
+  description?: string;
+  ogImage?: string;
+  canonical?: string;
+  ogType?: string;
+  twitterCard?: string;
+  twitterSite?: string;
+  twitterCreator?: string;
+}
+const { 
+  title, 
+  description = "เครื่องหนังแท้แฮนด์เมด สั่งทำพิเศษ สลักชื่อได้", 
+  ogImage, 
+  canonical,
+  ogType,
+  twitterCard,
+  twitterSite,
+  twitterCreator
+} = Astro.props;
+
+// ===== GTM Configuration =====
+// GTM จะจัดการ GA4 (G-1JF1X8YFER) ให้อัตโนมัติ - ตั้งค่า GA4 Tag ใน GTM Dashboard
+// Partytown จะรัน GTM ใน Web Worker แยกจาก Main Thread เพื่อไม่บล็อกการโหลดหน้าเว็บ
+
+// Fetch Site Settings (Menu)
+const siteSettings = await client.fetch(`*[_type == "siteSettings"][0]{
+  mainMenu
+}`);
+
+const menuItems = siteSettings?.mainMenu || [
+  { title: "หน้าแรก", url: "/" },
+  { title: "สินค้า", url: "/shop" },
+  { title: "บทความ", url: "/content" },
+  { title: "ผลงาน", url: "/portfolio" },
+  { title: "เกี่ยวกับ", url: "/about" },
+  { title: "ติดต่อ", url: "/contact-us" },
+];
+---
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/sabuykapao-logo.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="google-site-verification" content="uP0RIUxj8PcclqCknvOqT3CpPro3u1jtBge_LlcRBu4" />
+    
+    <meta name="robots" content="index, follow" />
+    
+    <!-- Preconnect to external origins -->
+    <link rel="preconnect" href="https://cdn.sanity.io" crossorigin />
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="/fonts/prompt-v11-latin_thai-regular.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/prompt-v11-latin_thai-700.woff2" as="font" type="font/woff2" crossorigin />
+
+    <CustomSEO
+      title={title}
+      description={description}
+      canonical={canonical}
+      ogImage={ogImage}
+      ogType={ogType}
+      twitterCard={twitterCard}
+      twitterSite={twitterSite}
+      twitterCreator={twitterCreator}
+    />
+    
+    <!-- Google Tag Manager (Partytown - runs in Web Worker for better performance) -->
+    <script type="text/partytown">
+      (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+      new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+      j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+      'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+      })(window,document,'script','dataLayer','GTM-WVRHLLSG');
+    </script>
+
+    <slot name="head" />
+  </head>
+  <body>
+    <!-- Google Tag Manager (noscript fallback) -->
+    <noscript>
+      <iframe 
+        src="https://www.googletagmanager.com/ns.html?id=GTM-WVRHLLSG"
+        height="0" 
+        width="0" 
+        style="display:none;visibility:hidden">
+      </iframe>
+    </noscript>
+
+    <!-- Cookie Consent Banner (Fixed Top) -->
+    <CookieConsent />
+
+    <Header client:idle menuItems={menuItems} />
+    <Search />
+    <slot />
+    <Footer />
+    <MobileNav />
+
+  </body>
+</html>

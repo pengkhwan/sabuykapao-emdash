@@ -1,0 +1,127 @@
+---
+// src/components/Footer.astro
+import '../styles/components/_Footer.scss';
+import { client } from '../lib/sanityClient.js';
+
+// Fetch Footer Settings
+const siteSettings = await client.fetch(`*[_type == "siteSettings"][0]{
+  footerAboutTitle,
+  footerAboutText,
+  footerProductTitle,
+  footerProductLinks,
+  footerArticleTitle,
+  footerArticleLinks,
+  footerSocialTitle,
+  socialLinks,
+  copyrightText,
+  legalLinks
+}`);
+
+// --- Fallback Data ---
+const defaultProductLinks = [
+  { href: "/keychain", text: "พวงกุญแจหนัง" },
+  { href: "/handbag", text: "กระเป๋าถือ" },
+  { href: "/shoulder-bag", text: "กระเป๋าสะพาย" },
+  { href: "/wallet", text: "กระเป๋าสตางค์" },
+  { href: "/backpack", text: "กระเป๋าเป้" },
+  { href: "/chest-bag", text: "กระเป๋าคาดอก" },
+  { href: "/belt", text: "เข็มขัดหนัง" },
+  { href: "/etc", text: "จิปาถะ" },
+];
+
+const defaultLegalLinks = [
+  { href: "/terms-and-conditions", text: "Terms and Conditions" },
+  { href: "/privacy-policy", text: "Privacy Policy" },
+  { href: "/refund-policy", text: "Refund Policy" },
+];
+
+const defaultArticleLinks = [
+  { href: "#", text: "เลือกซื้อกระเป๋าหนังผ่านร้านค้า" },
+  { href: "#", text: "วิธีดูแลรักษากระเป๋าหนัง" },
+  { href: "#", text: "การดูแลกระเป๋าหนัง" },
+];
+
+const defaultSocialLinks = [
+  { platform: 'facebook', url: '#' },
+  { platform: 'instagram', url: '#' },
+  { platform: 'x', url: '#' },
+  { platform: 'line', url: '#' },
+  { platform: 'youtube', url: '#' },
+  { platform: 'tiktok', url: '#' },
+];
+
+// --- Prepare Variables ---
+const aboutTitle = siteSettings?.footerAboutTitle || "เกี่ยวกับเรา";
+const aboutText = siteSettings?.footerAboutText || "สินค้าหนังแท้คุณภาพหลากหลายสไตล์ ในราคาย่อมเยา กระเป๋าสตางค์ กระเป๋าสะพาย พวงกุญแจ ของขวัญ ป้ายห้อยหนัง ผลิตจากหนังแท้เกรดพรีเมียม ทนทาน ใช้งานได้ยาวนาน ดีไซน์ทันสมัย ตอบโจทย์ทุกการใช้งาน สั่งซื้อเลยวันนี้!";
+
+const productTitle = siteSettings?.footerProductTitle || "สินค้าและบริการ";
+const productLinks = siteSettings?.footerProductLinks || defaultProductLinks;
+
+const articleTitle = siteSettings?.footerArticleTitle || "บทความแนะนำ";
+const articleLinks = siteSettings?.footerArticleLinks || defaultArticleLinks;
+
+const socialTitle = siteSettings?.footerSocialTitle || "ติดตามเรา";
+const socialLinks = siteSettings?.socialLinks || defaultSocialLinks;
+
+const currentYear = new Date().getFullYear();
+const copyrightText = siteSettings?.copyrightText || `© COPYRIGHT ${currentYear} SABUYKAPAO.COM ALL RIGHTS RESERVED.`;
+const legalLinks = siteSettings?.legalLinks || defaultLegalLinks;
+
+const iconMap: Record<string, string> = {
+  facebook: "/icons/icon-facebook.svg",
+  instagram: "/icons/icon-instagram.svg",
+  x: "/icons/icon-x.svg",
+  line: "/icons/icon-line.svg",
+  youtube: "/icons/icon-youtube.svg",
+  tiktok: "/icons/icon-tiktok.svg",
+};
+---
+
+<footer class="main-footer">
+  <div class="footer-grid">
+    <div class="footer-column">
+      <p class="footer-heading">{aboutTitle}</p>
+      <p>{aboutText}</p>
+    </div>
+
+    <div class="footer-column">
+      <p class="footer-heading">{productTitle}</p>
+      <ul>
+        {productLinks.map((link: any) => (
+          <li><a href={link.href}>{link.text}</a></li>
+        ))}
+      </ul>
+    </div>
+
+    <div class="footer-column">
+      <p class="footer-heading">{articleTitle}</p>
+      <ul>
+        {articleLinks.map((link: any) => (
+          <li><a href={link.href}>{link.text}</a></li>
+        ))}
+      </ul>
+    </div>
+
+    <div class="footer-column">
+      <p class="footer-heading">{socialTitle}</p>
+      <div class="footer-socials">
+        {socialLinks.map((social: any) => (
+          <a href={social.url} aria-label={social.platform} target="_blank" rel="noopener noreferrer">
+            <img src={iconMap[social.platform] || iconMap.facebook} alt={social.platform} width="24" height="24" />
+          </a>
+        ))}
+      </div>
+    </div>
+  </div>
+</footer>
+
+<div class="sub-footer">
+  <div class="sub-footer-content">
+    <p>{copyrightText}</p>
+    <nav>
+      {legalLinks.map((link: any) => (
+        <a href={link.href}>{link.text}</a>
+      ))}
+    </nav>
+  </div>
+</div>

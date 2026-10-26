@@ -1,0 +1,130 @@
+---
+/**
+ * TableOfContents.astro
+ * Props:
+ *  - rootSelector: ตัวเลือก DOM ของคอนเทนต์บทความ (default: '.article-page .prose')
+ *  - headingsSelector: เลือกระดับหัวข้อ (default: 'h2, h3')
+ */
+const {
+  rootSelector = '.article-page .prose',
+  headingsSelector = 'h2'
+} = Astro.props;
+---
+<nav class="article-toc" aria-label="สารบัญ">
+  <h2>สารบัญ</h2>
+  <ul class="toc-list"></ul>
+</nav>
+
+<script is:inline define:vars={{ rootSelector, headingsSelector }}>
+  (function () {
+    // slugify: เก็บ a-z/0-9/_ + ช่องว่าง/ขีด + Unicode ไทย
+    function slugify(text) {
+      return (text || "")
+        .toString()
+        .trim()
+        .toLowerCase()
+        .normalize("NFKD")
+        .replace(/[^\w\s-\u0E00-\u0E7F]/g, "") // เก็บไทยไว้
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-");
+    }
+
+    function buildTOC(root, tocList) {
+      if (!root || !tocList) {
+        return false;
+      }
+
+      const headings = root.querySelectorAll(headingsSelector);
+      
+      if (!headings || headings.length === 0) {
+        return false;
+      }
+
+      // เคลียร์รายการเก่า กันซ้ำ
+      tocList.innerHTML = "";
+
+      let found = 0;
+      headings.forEach((h) => {
+        const text = (h.textContent || "").trim();
+        
+        if (!text) return;
+
+        if (!h.id) {
+          const base = slugify(text) || "section";
+          let id = base, i = 1;
+          while (document.getElementById(id)) {
+            i += 1;
+            id = `${base}-${i}`;
+          }
+          h.id = id;
+        }
+
+        const li = document.createElement("li");
+        li.className = "toc-item level-" + h.tagName.toLowerCase();
+        const a = document.createElement("a");
+        a.href = "#" + h.id;
+        a.textContent = text;
+        li.appendChild(a);
+        tocList.appendChild(li);
+        found++;
+      });
+
+      const tocWrap = document.querySelector(".article-toc");
+      if (tocWrap) {
+        tocWrap.style.display = found ? "" : "none";
+      }
+
+      return found > 0;
+    }
+
+    function startWithRoot(root) {
+      const tocList = document.querySelector(".article-toc .toc-list");
+      if (!tocList) {
+        return;
+      }
+
+      // สร้างครั้งแรก
+      let ok = buildTOC(root, tocList);
+
+      // ถ้ายังไม่เจอหัวข้อ ใช้ MutationObserver เฝ้ารอ DOM เพิ่ม
+      if (!ok) {
+        const mo = new MutationObserver(() => {
+          if (buildTOC(root, tocList)) {
+            mo.disconnect();
+          }
+        });
+        mo.observe(root, { childList: true, subtree: true });
+
+        // safety timeout: หยุดสังเกตหลัง 10s
+        setTimeout(() => {
+          mo.disconnect();
+        }, 10000);
+      }
+    }
+
+    function waitForRootAndStart() {
+      let tries = 0;
+      (function tick() {
+        const root = document.querySelector(rootSelector);
+        
+        if (root) {
+          startWithRoot(root);
+          return;
+        }
+        if (tries++ >= 100) { // เพิ่มเป็น 100 ครั้ง (10 วินาที)
+          return;
+        }
+        setTimeout(tick, 100);
+      })();
+    }
+
+    // เพิ่ม delay เล็กน้อยเพื่อให้แน่ใจว่า DOM โหลดเสร็จ
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", () => {
+        setTimeout(waitForRootAndStart, 100);
+      }, { once: true });
+    } else {
+      setTimeout(waitForRootAndStart, 100);
+    }
+  })();
+</script>

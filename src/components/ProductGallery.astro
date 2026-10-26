@@ -1,0 +1,187 @@
+---
+// src/components/ProductGallery.astro
+import { Image } from 'astro:assets';
+import { urlFor } from '../lib/sanityImageUrl.js';
+
+export interface Props {
+  mainImage: {
+    url: string;
+    alt: string;
+  };
+  galleryImages: Array<{
+    _key: string;
+    url?: string;
+    asset?: any;
+    alt: string;
+  }>;
+}
+
+const { mainImage, galleryImages } = Astro.props;
+
+// ฟังก์ชันสำหรับสร้าง URL รูปภาพ (สำหรับ main image)
+function getImageUrl(image: any, width = 600) {
+  if (image.url) {
+    // ถ้าเป็น URL ตรงๆ (เช่นจาก Mock data) ให้เติม query string เองถ้าจำเป็น หรือใช้ตามนั้น
+    // แต่ในที่นี้เราสมมติว่าเป็น Sanity URL หรือ URL ที่รองรับ query params
+    return image.url.includes('?') ? image.url : `${image.url}?w=${width}&h=${width}&fit=crop&q=90&auto=format`;
+  } else if (image.asset) {
+    return urlFor(image).width(width).height(width).fit('crop').quality(90).auto('format').url();
+  }
+  return '';
+}
+
+// ฟังก์ชันสำหรับสร้าง URL thumbnail
+function getThumbnailUrl(image: any) {
+  if (image.url) {
+    return image.url;
+  } else if (image.asset) {
+    return urlFor(image).width(120).height(120).fit('crop').quality(90).auto('format').url();
+  }
+  return '';
+}
+---
+
+<div class="gallery-container">
+  <div class="main-image-wrapper">
+    <img
+      src={getImageUrl(mainImage, 600)}
+      srcset={`
+        ${getImageUrl(mainImage, 350)} 350w,
+        ${getImageUrl(mainImage, 500)} 500w,
+        ${getImageUrl(mainImage, 600)} 600w
+      `}
+      sizes="(max-width: 640px) 350px, (max-width: 1024px) 500px, 600px"
+      alt={mainImage.alt}
+      width="600"
+      height="600"
+      loading="eager"
+      decoding="async"
+    />
+  </div>
+
+  {galleryImages && galleryImages.length > 0 && (
+    <div class="thumbnail-grid">
+      <button class="thumbnail-button" data-active="true">
+        <img
+          src={getThumbnailUrl(mainImage)}
+          alt={mainImage.alt}
+          width="120"
+          height="120"
+          loading="lazy"
+          decoding="async"
+        />
+      </button>
+      
+      {galleryImages.map((image) => (
+        <button class="thumbnail-button">
+          <img
+            src={getThumbnailUrl(image)}
+            alt={image.alt}
+            width="120"
+            height="120"
+            loading="lazy"
+            decoding="async"
+          />
+        </button>
+      ))}
+    </div>
+  )}
+</div>
+
+<style>
+  .gallery-container {
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  
+  .main-image-wrapper {
+    aspect-ratio: 1 / 1;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #eee;
+  }
+  
+  .main-image-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .thumbnail-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+  
+  .thumbnail-button {
+    aspect-ratio: 1 / 1;
+    border-radius: 8px;
+    overflow: hidden;
+    padding: 0;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+    background: none;
+  }
+  
+  .thumbnail-button:hover {
+    border-color: #A98C72;
+  }
+  
+  .thumbnail-button[data-active="true"] {
+    border-color: #6C463E;
+  }
+  
+  .thumbnail-button img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+</style>
+
+<script>
+  // JavaScript สำหรับการเปลี่ยนรูปเมื่อคลิก thumbnail
+  function initGallery() {
+    const mainImage = document.querySelector('.main-image-wrapper img') as HTMLImageElement;
+    const thumbnailButtons = document.querySelectorAll('.thumbnail-button');
+    
+    if (!mainImage || thumbnailButtons.length === 0) return;
+    
+    thumbnailButtons.forEach((button, index) => {
+      button.addEventListener('click', function(this: HTMLButtonElement) {
+        const thumbnailImg = this.querySelector('img') as HTMLImageElement;
+        if (!thumbnailImg || !mainImage) return;
+        
+        // ดึง URL ต้นฉบับจาก thumbnail
+        const baseSrc = thumbnailImg.src.split('?')[0];
+        
+        // สร้าง URL สำหรับรูปขนาดต่างๆ
+        const getSizedUrl = (width: number) => {
+          return `${baseSrc}?w=${width}&h=${width}&fit=crop&q=90&auto=format`;
+        };
+        
+        // เปลี่ยนรูปหลักพร้อม srcset สำหรับ responsive
+        mainImage.src = getSizedUrl(600);
+        mainImage.srcset = `
+          ${getSizedUrl(350)} 350w,
+          ${getSizedUrl(500)} 500w,
+          ${getSizedUrl(600)} 600w
+        `;
+        mainImage.alt = thumbnailImg.alt;
+        
+        // อัปเดต active state
+        thumbnailButtons.forEach(btn => btn.removeAttribute('data-active'));
+        this.setAttribute('data-active', 'true');
+      });
+    });
+  }
+  
+  // รัน function ทันทีและเมื่อ DOM พร้อม
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initGallery);
+  } else {
+    initGallery();
+  }
+</script>
+

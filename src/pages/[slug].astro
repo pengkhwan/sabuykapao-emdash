@@ -1,0 +1,495 @@
+---
+// src/pages/[slug].astro
+import Layout from '../layouts/Layout.astro';
+import '../styles/pages/_slug.scss';
+import { client } from '../lib/sanityClient.js';
+import { urlFor } from '../lib/sanityImageUrl';
+import { marked } from 'marked';
+import DOMPurify from 'isomorphic-dompurify';
+
+// Configure marked to support captions in figures
+marked.use({
+  renderer: {
+    image({ href, title, text }) {
+      let imageHtml = '';
+      
+      // Check if it's a Sanity image to add optimization
+      if (href && href.includes('cdn.sanity.io')) {
+        const baseUrl = href.split('?')[0];
+        
+        // Extract dimensions from URL (e.g., .../image-800x600.jpg)
+        const dimensionsMatch = baseUrl.match(/-(\d+)x(\d+)\.[a-z]+$/);
+        const [_, w, h] = dimensionsMatch || [null, 800, 600];
+        const width = Number(w);
+        const height = Number(h);
+        const aspectRatio = width / height;
+
+        const srcset = `
+          ${baseUrl}?w=250&q=100&auto=format 250w,
+          ${baseUrl}?w=400&q=100&auto=format 400w,
+          ${baseUrl}?w=500&q=100&auto=format 500w
+        `;
+        
+        // ปรับ sizes ให้แม่นยำขึ้น:
+        // - จอเล็ก (มือถือ): เต็มจอ - padding (ประมาณ 3rem หรือ 48px)
+        // - จอใหญ่ (PC): แสดงผลจริงประมาณ 500px
+        const sizes = '(max-width: 500px) 100vw, 500px'; 
+        
+        imageHtml = `<img 
+          src="${baseUrl}?w=500&q=100&auto=format" 
+          srcset="${srcset}" 
+          sizes="${sizes}" 
+          alt="${text}" 
+          loading="lazy" 
+          width="${width}"
+          height="${height}"
+          style="width: 100%; height: auto; aspect-ratio: ${aspectRatio};" 
+        />`;
+      } else {
+        imageHtml = `<img src="${href}" alt="${text}" loading="lazy" />`;
+      }
+
+      if (title) {
+        return `
+          <figure>
+            ${imageHtml}
+            <figcaption>${title}</figcaption>
+          </figure>
+        `;
+      }
+      return imageHtml;
+    }
+  }
+});
+
+// Helper to preprocess markdown: Convert "Image + Newline + Italic" to "Image with Title"
+function preprocessMarkdown(content: string) {
+  if (!content) return "";
+  // Regex to match: ![Alt](URL) followed by *Caption* on a new line
+  return content.replace(/!\[([^\]]*)\]\(([^)]+)\)\s*\n\s*\*([^*]+)\*/g, (match, alt, url, caption) => {
+    return `![${alt}](${url} "${caption.trim()}")`;
+  });
+}
+
+// Components
+import ProductGallery from '../components/ProductGallery.astro';
+import PurchaseBox from '../components/PurchaseBox.astro';
+import ProductSchema from '../components/ProductSchema.astro';
+import TableOfContents from '../components/TableOfContents.astro';
+import FaqSection from '../components/FaqSection.astro';
+import References from '../components/References.astro';
+import ShareArticle from '../components/ShareArticle.astro';
+import RelatedArticles from '../components/RelatedArticles.astro';
+
+// 1) getStaticPaths
+export async function getStaticPaths() {
+  const query = `*[_type in ["product", "article", "portfolio"] && defined(slug.current) && (!defined(publishedAt) || publishedAt < now())][].slug.current`;
+  const slugs = await client.fetch(query);
+  return slugs.map((slug) => ({ params: { slug } }));
+}
+
+const { slug } = Astro.params as { slug: string };
+// 2) Query หลัก + สินค้าแนะนำ (category ร่วมกัน)
+const query = `*[_type in ["product", "article", "portfolio"] && slug.current == $slug && (!defined(publishedAt) || publishedAt < now())][0]{
+  ...,
+  "title": coalesce(title, name),
+
+  // รูปหลัก / แกลเลอรี
+  "mainImageUrl": image.asset->url,
+  "mainImageAlt": coalesce(image.alt, title),
+  "gallery": gallery[]{ _key, "url": asset->url, alt },
+
+  // หมวดหมู่ (ทั้ง deref และ id)
+  "categories": categories[]->{ title, "slug": slug.current },
+  "categoryIds": categories[]._ref,
+
+  // SEO data
+  "seoTitle": seo.seoTitle,
+  "seoDescription": seo.seoDescription,
+  "ogTitle": seo.ogTitle,
+  "ogDescription": seo.ogDescription,
+  "ogImageUrl": seo.ogImage.asset->url,
+
+  // วิดีโอ
+  "youtubeUrl": coalesce(youtubeUrl, videoUrl),
+
+  // FAQ & References data
+  faq,
+  references,
+
+  // Related Articles (สำหรับบทความ)
+  "relatedArticles": relatedArticles[@->publishedAt < now() || !defined(@->publishedAt)]->{
+    _id,
+    title,
+    "slug": slug.current,
+    excerpt,
+    featuredImage {
+      alt,
+      asset-> { ..., metadata { dimensions } }
+    }
+  },
+
+  // บทความ (article)
+  featuredImage {
+    alt,
+    asset-> { ..., metadata
+    { dimensions } }
+  },
+
+  // สินค้าแนะนำ: เรียงตามความเกี่ยวข้อง (หมวดหมู่เดียวกัน) ก่อน แล้วค่อยเอาสินค้าอื่นมาเติมให้ครบ 4 ชิ้น
+  "related": *[
+    _type == "product" &&
+    slug.current != $slug
+  ] | order(count(categories[@._ref in ^.categories[]._ref]) desc, _createdAt desc)[0...4]{
+    "title": coalesce(title, name),
+    "slug": slug.current,
+    "imageUrl": image.asset->url,
+    price,
+    shortDescription
+  }
+}`;
+const data = await client.fetch(query, { slug });
+
+if (!data) return Astro.redirect('/404');
+
+// ชื่อ/คำอธิบาย
+const pageTitle = data.seoTitle || data.title || data.name || 'Untitled Page';
+const pageDescription = data.seoDescription || data.excerpt ||
+data.shortDescription || '';
+
+// ===== Optimized OG Image (1200x630px - Facebook/Twitter Standard) =====
+const productOgImage = data.ogImageUrl 
+  ? `${data.ogImageUrl}?w=1200&h=630&fit=crop&q=80&auto=format`
+  : data.mainImageUrl 
+    ? `${data.mainImageUrl}?w=1200&h=630&fit=crop&q=80&auto=format`
+    : undefined;
+
+// ===== helper: ดึง YouTube ID ได้หลายรูปแบบ =====
+function getYouTubeId(u?: string) {
+  if (!u) return null;
+  const s = String(u);
+  const m = s.match(/(?:youtu\.be\/|youtube\.com\/(?:shorts\/|embed\/|v\/|watch\?v=|watch\?.+&v=))([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+const ytId = getYouTubeId(data.youtubeUrl);
+
+// Create galleryImages constant from the gallery field
+const galleryImages = data._type === 'product' && Array.isArray(data.gallery) && data.gallery.length > 0
+  ?
+  data.gallery.map(item => ({
+      _key: item._key || `gallery-${Math.random()}`,
+      url: item.url, // Direct URL for ProductGallery component
+      alt: item.alt || data.title
+    }))
+  : [];
+
+// ====== Article Schema (JSON-LD) - เพิ่มเฉพาะสำหรับบทความ ======
+const siteOrigin =
+  (Astro.site && Astro.site.toString().replace(/\/$/, '')) || '';
+const currentUrl =
+  (typeof Astro.url?.href === 'string' && Astro.url.href) ||
+  (siteOrigin && data?.slug?.current ? `${siteOrigin}/${data.slug.current}` : undefined);
+
+const articleOg =
+  data.ogImageUrl ||
+  (data.featuredImage?.asset?.url) ||
+  data.mainImageUrl ||
+  undefined;
+
+const articleBreadcrumbs = [
+  {
+    "@type": "ListItem",
+    position: 1,
+    name: "หน้าแรก",
+    item: `${siteOrigin}/`
+  },
+  ...(Array.isArray(data?.categories) && data.categories.length > 0 && data.categories[0]
+    ? [{
+        "@type": "ListItem",
+        position: 2,
+        name: data.categories[0].title || 'บทความ',
+        item: `${siteOrigin}/content`
+      }]
+    : []),
+  ...(currentUrl ? [{
+    "@type": "ListItem",
+    position: (Array.isArray(data?.categories) && data.categories.length > 0 ? 3 : 2),
+    name: pageTitle,
+    item: currentUrl
+  }] : [])
+];
+
+const articleFaqEntities = Array.isArray(data?.faq)
+  ? data.faq
+      .filter(q => q?.question && q?.answer)
+      .map(q => ({
+        "@type": "Question",
+        name: q.question,
+        acceptedAnswer: { "@type": "Answer", text: q.answer }
+      }))
+  : [];
+
+const articleNode = {
+  "@type": "BlogPosting",
+  headline: pageTitle,
+  description: pageDescription,
+  ...(articleOg ? { image: [articleOg] } : {}),
+  ...(currentUrl ? { mainEntityOfPage: { "@type": "WebPage", "@id": currentUrl } } : {}),
+  datePublished: data?.publishedAt || data?._createdAt,
+  dateModified: data?._updatedAt || data?.publishedAt || data?._createdAt,
+  author: { "@type": "Organization", name: "SabuyKapao" }
+};
+
+const articleLD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    articleNode,
+    ...(articleBreadcrumbs.length > 0 ? [{
+      "@type": "BreadcrumbList",
+      itemListElement: articleBreadcrumbs
+    }] : []),
+    ...(articleFaqEntities.length > 0 ? [{
+      "@type": "FAQPage",
+      ...(currentUrl ? { "@id": `${currentUrl}#faq` } : {}),
+      mainEntity: articleFaqEntities
+    }] : [])
+  ]
+};
+---
+<Layout
+  title={pageTitle}
+  description={pageDescription}
+  ogImage={productOgImage}
+  ogType={data._type === 'article' ? 'article' : 'product'}
+>
+  <!-- Preconnect to Sanity CDN -->
+  <link slot="head" rel="preconnect" href="https://cdn.sanity.io" />
+  
+  <!-- Preload product image for LCP -->
+  {data._type === 'product' && data.mainImageUrl && (
+    <link 
+      slot="head" 
+      rel="preload" 
+      as="image" 
+      href={`${data.mainImageUrl}?w=600&h=600&fit=crop&q=85&auto=format`} 
+      imagesrcset={`
+        ${data.mainImageUrl}?w=350&h=350&fit=crop&q=85&auto=format 350w,
+        ${data.mainImageUrl}?w=500&h=500&fit=crop&q=85&auto=format 500w,
+        ${data.mainImageUrl}?w=600&h=600&fit=crop&q=85&auto=format 600w
+      `}
+      imagesizes="(max-width: 640px) 350px, (max-width: 1024px) 500px, 600px"
+      fetchpriority="high" 
+    />
+  )}
+  
+  <!-- Preload article featured image for LCP -->
+  {data._type === 'article' && data.featuredImage && (
+    <link 
+      slot="head" 
+      rel="preload" 
+      as="image" 
+      href={urlFor(data.featuredImage).width(500).quality(95).auto('format').url()} 
+      imagesrcset={`
+        ${urlFor(data.featuredImage).width(250).quality(95).auto('format').url()} 250w,
+        ${urlFor(data.featuredImage).width(350).quality(95).auto('format').url()} 350w,
+        ${urlFor(data.featuredImage).width(500).quality(95).auto('format').url()} 500w
+      `}
+      imagesizes="(max-width: 640px) 350px, 500px"
+      fetchpriority="high" 
+    />
+  )}
+
+  {/* ============== PRODUCT ============== */}
+  {data._type === 'product' && (
+    <>
+      <ProductSchema product={data} />
+      <main class="slug-page">
+        <div class="container">
+          <nav class="breadcrumbs">
+            <a href="/">หน้าแรก</a>
+            <span>/</span>
+            {data.categories?.[0] && (
+              <a href={`/${data.categories[0].slug}`}>{data.categories[0].title}</a>
+            )}
+          </nav>
+
+          <div class="product-layout-grid">
+            <div class="product-col-gallery">
+              <ProductGallery
+                mainImage={{ url: data.mainImageUrl, alt: data.mainImageAlt || data.title }}
+                galleryImages={galleryImages}
+              />
+            </div>
+
+            <div class="product-col-info">
+              <h1>{data.title}</h1>
+
+              {data.shortDescription && <p class="short-description">{data.shortDescription}</p>}
+
+              <div class="category-tags">
+                <span class="label">หมวดหมู่:</span>
+                {data.categories?.map(cat => <a href={`/${cat.slug}`}>{cat.title}</a>)}
+              </div>
+
+              {Array.isArray(data.features) && data.features.length > 0 && (
+                <ul class="features-list">
+                  {data.features.map(feature => (
+                    <li>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="icon">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0 -16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clip-rule="evenodd" />
+                      </svg>
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div class="product-col-purchase">
+              <PurchaseBox product={data} />
+            </div>
+          </div>
+
+          <div class="description-section">
+            <h2>รายละเอียดสินค้า</h2>
+            {data.description && (
+              <div class="prose" set:html={DOMPurify.sanitize(marked.parse(data.description || ""))} />
+            )}
+
+            {Array.isArray(data.faq) && data.faq.length > 0 && (
+              <section class="faq-section">
+                <h2>คำถามที่พบบ่อย (FAQ)</h2>
+                <div class="faq-list">
+                  {data.faq.map((item) => (
+                    <details>
+                      <summary>{item.question}</summary>
+                      <div class="answer">
+                        <p>{item.answer}</p>
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* วิดีโอ YouTube */}
+            {ytId && (
+              <div class="video-container">
+                <h3>วิดีโอประกอบสินค้า</h3>
+                <iframe
+                  src={`https://www.youtube.com/embed/${ytId}`}
+                  title="วิดีโอ YouTube"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  referrerpolicy="strict-origin-when-cross-origin"
+                  allowfullscreen
+                  loading="lazy">
+                </iframe>
+              </div>
+            )}
+
+            {/* กล่องการซื้อ (ด้านล่าง) */}
+            <div class="bottom-purchase-box">
+              <PurchaseBox product={data} />
+            </div>
+
+            {/* สินค้าแนะนำ/ใกล้เคียง */}
+            {Array.isArray(data.related) && data.related.length > 0 && (
+              <section class="related-products">
+                <h2>สินค้าที่คุณอาจสนใจ</h2>
+                <div class="related-grid">
+                  {data.related.map(item => (
+                    <a class="related-card" href={`/${item.slug}`} aria-label={item.title}>
+                      {item.imageUrl && (
+                        <div class="thumb">
+                          <img
+                            src={`${item.imageUrl}?w=400&h=400&fit=crop&q=85&auto=format`}
+                            srcset={`
+                              ${item.imageUrl}?w=280&h=280&fit=crop&q=85&auto=format 280w,
+                              ${item.imageUrl}?w=400&h=400&fit=crop&q=85&auto=format 400w
+                            `}
+                            sizes="(max-width: 640px) 45vw, 280px"
+                            alt={item.title}
+                            loading="lazy"
+                            width="400"
+                            height="400"
+                          />
+                        </div>
+                      )}
+                      <div class="related-info">
+                        <h3>{item.title}</h3>
+                        {typeof item.price === 'number' && (
+                          <div class="price">{new Intl.NumberFormat('th-TH').format(item.price)} บาท</div>
+                        )}
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+        </div>
+      </main>
+    </>
+  )}
+
+  {/* ============== ARTICLE ============== */}
+  {data._type === 'article' && (
+    <>
+      <main class="container article-page">
+        {/* JSON-LD สำหรับหน้าเนื้อหาบทความ */}
+        <script type="application/ld+json" set:html={JSON.stringify(articleLD)} />
+      <div class="article-header">
+        <h1>{data.title}</h1>
+
+        {data.featuredImage && (
+          <figure class="featured-image">
+            <img
+              src={urlFor(data.featuredImage).width(500).quality(95).auto('format').url()}
+              srcset={`
+                ${urlFor(data.featuredImage).width(250).quality(95).auto('format').url()} 250w,
+                ${urlFor(data.featuredImage).width(350).quality(95).auto('format').url()} 350w,
+                ${urlFor(data.featuredImage).width(500).quality(95).auto('format').url()} 500w
+              `}
+              sizes="(max-width: 640px) 350px, 500px"
+              alt={data.featuredImage.alt || data.title}
+              width={data.featuredImage.asset?.metadata?.dimensions?.width || 700}
+              height={data.featuredImage.asset?.metadata?.dimensions?.height || 'auto'}
+              style={`aspect-ratio: ${data.featuredImage.asset?.metadata?.dimensions?.width}/${data.featuredImage.asset?.metadata?.dimensions?.height};`}
+              loading="eager"
+              decoding="async"
+              fetchpriority="high"
+            />
+          </figure>
+        )}
+      </div>
+
+      <TableOfContents />
+
+      <div class="prose">
+        {/* Render Markdown body */}
+        {data.body && <div set:html={DOMPurify.sanitize(marked.parse(preprocessMarkdown(data.body)))} />}
+
+        {/* FAQ and References are now inside .prose */}
+        <FaqSection faq={data.faq} />
+        <References references={data.references} />
+      </div>
+
+      {/* Share Article Section */}
+      <ShareArticle title={data.title} url={Astro.url.href} />
+
+      {/* Related Articles Section */}
+      <RelatedArticles articles={data.relatedArticles} />
+
+      </main>
+    </>
+  )}
+
+  {/* ============== PORTFOLIO ============== */}
+  {data._type === 'portfolio' && (
+    <main class="container">
+      <h1>{data.title}</h1>
+      <p>นี่คือหน้า Portfolio</p>
+      {data.body && <div class="prose" set:html={DOMPurify.sanitize(marked.parse(preprocessMarkdown(data.body)))} />}
+    </main>
+  )}
+</Layout>

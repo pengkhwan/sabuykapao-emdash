@@ -1,0 +1,148 @@
+---
+// src/components/ArticleSchema.astro
+interface Props {
+  article: any;
+  baseUrl?: string; // เผื่ออยากกำหนด origin เอง
+}
+const { article, baseUrl } = Astro.props;
+
+// สร้าง URL หน้าปัจจุบัน (รองรับทั้ง Astro.site และ baseUrl)
+const site = (Astro.site ?? baseUrl)?.toString().replace(/\/$/, '') || '';
+const pageUrl =
+  (typeof Astro.url?.href === 'string' && Astro.url.href) ||
+  (site && article?.slug?.current ? `${site}/${article.slug.current}` : undefined);
+
+// ดึงข้อมูลหลัก
+const title =
+  article?.seo?.title ||
+  article?.title ||
+  'Untitled Article';
+
+const description =
+  article?.seo?.description ||
+  article?.excerpt ||
+  '';
+
+// รูปภาพ (ลำดับความสำคัญ: seo.ogImage > featuredImage > mainImageUrl)
+const og =
+  article?.seo?.ogImage?.asset?.url ||
+  article?.featuredImage?.asset?.url ||
+  article?.mainImageUrl ||
+  undefined;
+
+const datePublished = article?.publishedAt || article?._createdAt;
+const dateModified  = article?._updatedAt || article?.publishedAt || article?._createdAt;
+
+// ผู้เขียนและผู้เผยแพร่: ใช้ Organization schema แบบเต็ม
+const author = { 
+  "@type": "Organization",
+  "@id": "https://sabuykapao.com/#organization",
+  "name": "SabuyKapao",
+  "url": "https://sabuykapao.com/"
+};
+const publisher = { "@id": "https://sabuykapao.com/#organization" };
+
+// Keywords: ดึงจาก tags หรือ categories ของบทความ
+const keywords = [];
+if (Array.isArray(article?.tags)) {
+  keywords.push(...article.tags.map((tag: any) => tag?.title || tag?.name || tag).filter(Boolean));
+}
+// เพิ่ม categories เข้าไปใน keywords ด้วย (ถ้าต้องการ)
+if (Array.isArray(article?.categories)) {
+  keywords.push(...article.categories.map((cat: any) => cat?.title || cat?.name).filter(Boolean));
+}
+
+// Breadcrumb จากหมวดหมู่ (ถ้ามี)
+const breadcrumbs = Array.isArray(article?.categories)
+  ? article.categories.map((c: any, i: number) => ({
+      "@type": "ListItem",
+      "position": i + 1,
+      "name": c?.title || `Category ${i+1}`,
+      "item": site && c?.slug ? `${site}/shop/${c.slug}` : undefined
+    }))
+  : [];
+
+// FAQ (ถ้ามี)
+const faqItems = Array.isArray(article?.faq)
+  ? article.faq.map((qa: any) => ({
+      "@type": "Question",
+      "name": qa?.question || '',
+      "acceptedAnswer": { "@type": "Answer", "text": qa?.answer || '' }
+    }))
+  : [];
+
+// สร้าง @graph
+const graph: any = {
+  "@context": "https://schema.org",
+  "@graph": [
+    // Article / BlogPosting
+    {
+      "@type": "BlogPosting",
+      "headline": title,
+      "description": description,
+      ...(og ? { "image": [og] } : {}),
+      ...(pageUrl ? { "mainEntityOfPage": { "@type": "WebPage", "@id": pageUrl } } : {}),
+      "datePublished": datePublished,
+      "dateModified": dateModified,
+      "author": author,
+      "publisher": publisher,
+      ...(keywords.length > 0 ? { "keywords": keywords.join(', ') } : {})
+    },
+
+    // WebPage (เล็กๆ เผื่อเสริมความชัดเจน)
+    ...(pageUrl ? [{
+      "@type": "WebPage",
+      "@id": pageUrl,
+      "url": pageUrl,
+      "name": title,
+      "description": description
+    }] : []),
+
+    // BreadcrumbList
+    ...(breadcrumbs.length > 0 ? [{
+      "@type": "BreadcrumbList",
+      "itemListElement": breadcrumbs
+    }] : []),
+
+    // Organization Schema
+    {
+      "@type": "Organization",
+      "@id": "https://sabuykapao.com/#organization",
+      "name": "SabuyKapao",
+      "url": "https://sabuykapao.com/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://sabuykapao.com/sabuykapao-logo.svg"
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "telephone": "+66-84-095-4445",
+        "contactType": "Customer Service"
+      },
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "337/2 หมู่ 4 ทางหลวงแผ่นดินหมายเลข 325, ตำบลดอนกรวย",
+        "addressLocality": "ดำเนินสะดวก",
+        "addressRegion": "ราชบุรี",
+        "postalCode": "70130",
+        "addressCountry": "TH"
+      },
+      "sameAs": [
+        "https://www.facebook.com/sabuykapao",
+        "https://line.me/ti/p/@sabuykapao",
+        "https://www.tiktok.com/@sabuykapao",
+        "https://shopee.co.th/sabuykapao"
+      ]
+    },
+
+    // FAQPage (ถ้ามี FAQ)
+    ...(faqItems.length > 0 ? [{
+      "@type": "FAQPage",
+      ...(pageUrl ? { "@id": `${pageUrl}#faq` } : {}),
+      "mainEntity": faqItems
+    }] : [])
+  ]
+};
+---
+
+<script type="application/ld+json" set:html={JSON.stringify(graph)} />

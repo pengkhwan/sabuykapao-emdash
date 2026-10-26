@@ -1,0 +1,82 @@
+---
+// src/components/RelatedArticles.astro
+import { Image } from 'astro:assets';
+import { urlFor } from '../lib/sanityImageUrl';
+
+interface Props {
+  articles: Array<{
+    _id: string;
+    title: string;
+    slug: string;
+    excerpt?: string;
+    featuredImage?: {
+      alt?: string;
+      asset?: any;
+    };
+  }>;
+}
+
+const { articles } = Astro.props;
+
+// กรองเฉพาะบทความที่มีข้อมูลครบถ้วน
+const validArticles = (articles || []).filter(article => 
+  article && article._id && article.title && article.slug
+);
+
+// จำกัดจำนวน 5 บทความ
+const displayArticles = validArticles.slice(0, 5);
+---
+
+{displayArticles.length > 0 && (
+  <section class="related-articles">
+    <div class="related-articles__header">
+      <h2 class="related-articles__title">บทความที่เกี่ยวข้อง</h2>
+      <p class="related-articles__subtitle">อ่านบทความอื่นๆ ที่น่าสนใจ</p>
+    </div>
+    
+    <div class="related-articles__grid">
+      {displayArticles.map((article, index) => (
+        <article class="related-article-card" data-slug={article.slug}>
+          <a href={`/${article.slug}`} class="related-article-card__link">
+            <div class="related-article-card__image">
+              {article.featuredImage?.asset ? (
+                <img
+                  src={urlFor(article.featuredImage).width(400).height(300).quality(95).auto('format').url()}
+                  srcset={`
+                    ${urlFor(article.featuredImage).width(280).height(210).quality(95).auto('format').url()} 280w,
+                    ${urlFor(article.featuredImage).width(400).height(300).quality(95).auto('format').url()} 400w
+                  `}
+                  sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 280px"
+                  alt={article.featuredImage.alt || article.title}
+                  width="400"
+                  height="300"
+                  loading={index < 2 ? 'eager' : 'lazy'}
+                  decoding="async"
+                />
+              ) : (
+                <div class="related-article-card__placeholder">
+                  <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <polyline points="21,15 16,10 5,21"/>
+                  </svg>
+                </div>
+              )}
+            </div>
+            
+            <div class="related-article-card__content">
+              <h3 class="related-article-card__title">
+                {article.title}
+              </h3>
+              {article.excerpt && (
+                <p class="related-article-card__excerpt">
+                  {article.excerpt}
+                </p>
+              )}
+            </div>
+          </a>
+        </article>
+      ))}
+    </div>
+  </section>
+)}

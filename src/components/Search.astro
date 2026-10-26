@@ -1,0 +1,305 @@
+---
+// src/components/Search.astro
+---
+
+<div class="search-modal" id="search-modal">
+  <div class="search-modal__backdrop"></div>
+  <div class="search-modal__content">
+    <div class="search-modal__header">
+      <h2>ค้นหาสินค้าและบทความ</h2>
+      <button class="search-modal__close" aria-label="ปิดค้นหา" id="search-close-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div id="pagefind-search"></div>
+  </div>
+</div>
+
+<script>
+  // Initialize Pagefind after page load
+  let pagefindInitialized = false;
+
+  async function initializePagefind() {
+    if (pagefindInitialized) return;
+    
+    try {
+      // Dynamically load Pagefind CSS (only when modal opens)
+      if (!document.querySelector('link[href*="pagefind-ui.css"]')) {
+        const cssLink = document.createElement('link');
+        cssLink.rel = 'stylesheet';
+        cssLink.href = '/pagefind/pagefind-ui.css';
+        document.head.appendChild(cssLink);
+      }
+      
+      // Dynamically import Pagefind UI
+      if (!window.PagefindUI) {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = '/pagefind/pagefind-ui.js';
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      }
+      
+      new window.PagefindUI({ 
+        element: "#pagefind-search",
+        showSubResults: true,
+        showImages: false,
+        excerptLength: 15,
+        translations: {
+          placeholder: "ค้นหาสินค้า บทความ...",
+          clear_search: "ล้าง",
+          load_more: "โหลดเพิ่มเติม",
+          search_label: "ค้นหาเว็บไซต์นี้",
+          filters_label: "กรอง",
+          zero_results: "ไม่พบผลลัพธ์สำหรับ [SEARCH_TERM]",
+          many_results: "[COUNT] ผลลัพธ์สำหรับ [SEARCH_TERM]",
+          one_result: "[COUNT] ผลลัพธ์สำหรับ [SEARCH_TERM]",
+          alt_search: "ไม่พบผลลัพธ์สำหรับ [SEARCH_TERM]. แสดงผลลัพธ์สำหรับ [DIFFERENT_TERM] แทน",
+          search_suggestion: "ไม่พบผลลัพธ์สำหรับ [SEARCH_TERM]. ลองค้นหาคำอื่น:",
+          searching: "กำลังค้นหา [SEARCH_TERM]..."
+        }
+      });
+      pagefindInitialized = true;
+    } catch (error) {
+      console.error('Failed to load Pagefind:', error);
+    }
+  }
+
+  function setupSearch() {
+    const searchModal = document.getElementById('search-modal');
+    const searchTrigger = document.getElementById('search-trigger-btn');
+    const searchClose = document.getElementById('search-close-btn');
+    const searchBackdrop = document.querySelector('.search-modal__backdrop');
+
+    if (!searchModal || !searchClose || !searchBackdrop) {
+      return;
+    }
+
+    // Function to open modal
+    const openModal = async () => {
+      await initializePagefind();
+      searchModal.classList.add('is-active');
+      document.body.style.overflow = 'hidden';
+      
+      setTimeout(() => {
+        const searchInput = document.querySelector('#pagefind-search input');
+        if (searchInput) searchInput.focus();
+      }, 100);
+    };
+
+    // Bind to trigger button (from Header)
+    if (searchTrigger) {
+      searchTrigger.addEventListener('click', openModal);
+    }
+
+    // Also listen for custom event from Header component
+    document.addEventListener('open-search', openModal);
+
+    // Close modal
+    const closeModal = () => {
+      searchModal.classList.remove('is-active');
+      document.body.style.overflow = '';
+    };
+
+    searchClose.addEventListener('click', closeModal);
+    searchBackdrop.addEventListener('click', closeModal);
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && searchModal.classList.contains('is-active')) {
+        closeModal();
+      }
+    });
+  }
+
+  // Initialize on DOMContentLoaded
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupSearch);
+  } else {
+    setupSearch();
+  }
+</script>
+
+<style lang="scss">
+  @use '../styles/variables' as var;
+
+  .search-container {
+    position: relative;
+    display: inline-flex;
+  }
+
+  .search-trigger {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var.$clr_text_heading;
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: var.$clr_accent;
+    }
+
+    svg {
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  .search-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    display: none;
+    
+    &.is-active {
+      display: block;
+    }
+
+    &__backdrop {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+    }
+
+    &__content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90%;
+      max-width: 700px;
+      max-height: 80vh;
+      background: var.$clr_bg_primary;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+
+      @media (max-width: 768px) {
+        width: 95%;
+        max-height: 90vh;
+      }
+    }
+
+    &__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.5rem;
+      border-bottom: 1px solid var.$clr_bg_secondary;
+
+      h2 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var.$clr_text_heading;
+        margin: 0;
+      }
+    }
+
+    &__close {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var.$clr_text_body;
+      transition: color 0.2s ease;
+
+      &:hover {
+        color: var.$clr_accent;
+      }
+    }
+  }
+
+  :global(#pagefind-search) {
+    padding: 1.5rem;
+    overflow-y: auto;
+    max-height: calc(80vh - 80px);
+
+    @media (max-width: 768px) {
+      padding: 1rem;
+      max-height: calc(90vh - 80px);
+    }
+  }
+
+  :global(.pagefind-ui__search-input) {
+    background: var.$clr_bg_secondary !important;
+    border: 2px solid transparent !important;
+    border-radius: 8px !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 1rem !important;
+    color: var.$clr_text_heading !important;
+    transition: border-color 0.2s ease !important;
+
+    &:focus {
+      border-color: var.$clr_accent !important;
+      outline: none !important;
+    }
+  }
+
+  :global(.pagefind-ui__result) {
+    border: 1px solid var.$clr_bg_secondary !important;
+    border-radius: 8px !important;
+    padding: 1rem !important;
+    margin-bottom: 1rem !important;
+    transition: all 0.2s ease !important;
+
+    &:hover {
+      border-color: var.$clr_accent !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+    }
+  }
+
+  :global(.pagefind-ui__result-title) {
+    font-size: 1.125rem !important;
+    font-weight: 600 !important;
+    color: var.$clr_text_heading !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  :global(.pagefind-ui__result-excerpt) {
+    color: var.$clr_text_body !important;
+    font-size: 0.9rem !important;
+    line-height: 1.6 !important;
+  }
+
+  :global(.pagefind-ui__button) {
+    background: var.$clr_accent !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 6px !important;
+    padding: 0.5rem 1rem !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: opacity 0.2s ease !important;
+
+    &:hover {
+      opacity: 0.9 !important;
+    }
+  }
+
+  :global(.pagefind-ui__message) {
+    color: var.$clr_text_body !important;
+    text-align: center !important;
+    padding: 2rem !important;
+  }
+</style>

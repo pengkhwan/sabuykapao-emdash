@@ -1,0 +1,282 @@
+---
+// src/pages/terms-and-conditions.astro
+import Layout from '../layouts/Layout.astro';
+
+const pageSchema = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "ข้อตกลงและเงื่อนไขการใช้บริการ - SabuyKapao",
+    "description": "อ่านข้อตกลงและเงื่อนไขการใช้บริการ SabuyKapao เว็บไซต์ Catalog แสดงสินค้าเครื่องหนังแฮนด์เมด",
+    "url": new URL(Astro.url.pathname, Astro.site).href,
+};
+---
+
+<Layout 
+  title="ข้อตกลงและเงื่อนไขการใช้บริการ (Terms and Conditions) - SabuyKapao"
+  description="ข้อตกลงและเงื่อนไขการใช้บริการ SabuyKapao เว็บไซต์ Catalog แสดงสินค้าเครื่องหนังแฮนด์เมด"
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(pageSchema)} />
+  </Fragment>
+
+  <main class="terms-page">
+    <div class="container">
+      <div class="content-wrapper">
+        <header class="page-header">
+          <h1>ข้อตกลงและเงื่อนไขการใช้บริการ (Terms and Conditions)</h1>
+          <p class="last-updated">อัปเดตล่าสุด: 23 มกราคม 2569</p>
+        </header>
+
+        <div class="content-body">
+          <p class="intro">
+            ยินดีต้อนรับสู่ <strong>SabuyKapao</strong> เว็บไซต์นี้จัดทำขึ้นเพื่อแสดงผลงาน, สินค้า 
+            และให้ข้อมูลเกี่ยวกับผลิตภัณฑ์เครื่องหนังแฮนด์เมดของเรา ("บริการ") 
+            การเข้าใช้งานเว็บไซต์นี้ถือว่าท่านยอมรับข้อตกลงและเงื่อนไขดังต่อไปนี้
+          </p>
+
+          <section class="policy-section">
+            <h2>1. ขอบเขตการให้บริการ (Catalog & Showcase)</h2>
+            <p>
+              เว็บไซต์นี้มีวัตถุประสงค์เพื่อเป็น <strong>"แคตตาล็อกออนไลน์"</strong> 
+              เพื่อแสดงรายละเอียดสินค้า, รูปภาพ และราคาเบื้องต้นเท่านั้น
+            </p>
+            <ul class="custom-list">
+              <li>
+                เรา <strong>ไม่ได้</strong> ให้บริการสั่งซื้อหรือชำระเงินโดยตรงผ่านหน้าเว็บไซต์นี้
+              </li>
+              <li>
+                การสั่งซื้อสินค้าจริงจะเกิดขึ้นผ่านช่องทางภายนอก หรือแพลตฟอร์มพันธมิตร 
+                (อาทิ Shopee, Lazada, TikTok Shop, LINE OA)
+              </li>
+            </ul>
+          </section>
+
+          <section class="policy-section">
+            <h2>2. การสั่งซื้อและธุรกรรมกับบุคคลที่สาม</h2>
+            <p>
+              เนื่องจากเว็บไซต์ของเราทำหน้าที่ส่งต่อท่านไปยังแพลตฟอร์มการสั่งซื้อภายนอก:
+            </p>
+            <ul class="custom-list">
+              <li>
+                ธุรกรรมการเงิน, การจัดส่ง และการรับประกันสินค้า จะอยู่ภายใต้ 
+                <strong>"ข้อตกลงและเงื่อนไขของแพลตฟอร์มนั้นๆ"</strong> 
+                (เช่น นโยบายการคืนเงินของ Shopee)
+              </li>
+              <li>
+                SabuyKapao ไม่สามารถรับผิดชอบต่อความล่าช้า, ความเสียหาย 
+                หรือข้อพิพาทที่เกิดขึ้นจากกระบวนการจัดส่งหรือระบบชำระเงินของแพลตฟอร์มภายนอกได้ 
+                แต่เรายินดีที่จะช่วยประสานงานและให้ข้อมูลอย่างเต็มที่
+              </li>
+            </ul>
+          </section>
+
+          <section class="policy-section">
+            <h2>3. ความถูกต้องของข้อมูลสินค้า</h2>
+            <p>
+              เราพยายามอย่างยิ่งที่จะแสดงข้อมูล, สี และราคาของสินค้าให้ถูกต้องที่สุด อย่างไรก็ตาม:
+            </p>
+            <ul class="custom-list">
+              <li>
+                <strong>สีของสินค้า:</strong> อาจผิดเพี้ยนไปบ้างขึ้นอยู่กับการตั้งค่าหน้าจออุปกรณ์ของท่าน 
+                และธรรมชาติของหนังแท้ที่จะมีลวดลายเฉพาะตัว
+              </li>
+              <li>
+                <strong>ราคาและสต็อก:</strong> ข้อมูลบนเว็บไซต์อาจมีการดีเลย์ 
+                โปรดอ้างอิงราคาและจำนวนสินค้าคงเหลือที่เป็นปัจจุบันที่สุดจากหน้าร้านบน Marketplace 
+                (Shopee/Lazada) เป็นหลัก
+              </li>
+            </ul>
+          </section>
+
+          <section class="policy-section">
+            <h2>4. ทรัพย์สินทางปัญญา</h2>
+            <p>
+              รูปภาพ, โลโก้, บทความ และเนื้อหาทั้งหมดบนเว็บไซต์นี้ เป็นลิขสิทธิ์ของ <strong>SabuyKapao</strong>
+            </p>
+            <ul class="custom-list">
+              <li>
+                อนุญาตให้แชร์เพื่อการบอกต่อ หรือรีวิวสินค้าโดยให้เครดิต
+              </li>
+              <li>
+                <strong>ไม่อนุญาต</strong> ให้นำรูปภาพไปใช้ในเชิงพาณิชย์, แอบอ้างขายสินค้า, 
+                หรือผลิตซ้ำ โดยไม่ได้รับอนุญาตเป็นลายลักษณ์อักษร
+              </li>
+            </ul>
+          </section>
+
+          <section class="policy-section">
+            <h2>5. การเชื่อมโยงไปยังเว็บไซต์อื่น</h2>
+            <p>
+              เว็บไซต์ของเราอาจมีลิงก์ไปยังเว็บไซต์อื่น (เช่น Social Media, Marketplace) 
+              เราไม่มีอำนาจควบคุมและไม่รับผิดชอบต่อเนื้อหาหรือนโยบายความเป็นส่วนตัวของเว็บไซต์เหล่านั้น
+            </p>
+          </section>
+
+          <section class="policy-section">
+            <h2>6. การเปลี่ยนแปลงข้อตกลง</h2>
+            <p>
+              เราขอสงวนสิทธิ์ในการแก้ไขข้อตกลงและเงื่อนไขนี้ได้ตลอดเวลา 
+              โดยการเปลี่ยนแปลงจะมีผลทันทีที่ประกาศบนเว็บไซต์
+            </p>
+          </section>
+
+          <section class="policy-section">
+            <h2>7. กฎหมายที่ใช้บังคับ</h2>
+            <p>
+              ข้อตกลงนี้อยู่ภายใต้บังคับของกฎหมายแห่งราชอาณาจักรไทย 
+              หากมีข้อพิพาทใดๆ ให้เข้าสู่กระบวนการระงับข้อพิพาทในประเทศไทย
+            </p>
+          </section>
+
+          <div class="contact-info">
+            <strong>ติดต่อสอบถาม:</strong>
+            <p>หากท่านมีข้อสงสัยเกี่ยวกับเงื่อนไขการใช้งาน สามารถติดต่อเราได้ที่ช่องทาง Official ของ SabuyKapao</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</Layout>
+
+<style>
+  .terms-page {
+    background-color: #FAFAF9;
+    min-height: 100vh;
+    padding: 3rem 0;
+    font-family: 'Sarabun', sans-serif;
+  }
+
+  .content-wrapper {
+    max-width: 48rem; /* max-w-3xl */
+    margin: 0 auto;
+    background: #FFFFFF;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+
+    @media (min-width: 768px) {
+      padding: 3rem;
+    }
+  }
+
+  .page-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    border-bottom: 1px solid #E7E5E4;
+    padding-bottom: 2rem;
+
+    h1 {
+      font-size: 1.875rem;
+      font-weight: 800;
+      color: #8B5E3C;
+      margin-bottom: 0.75rem;
+      line-height: 1.2;
+
+      @media (min-width: 640px) {
+        font-size: 2.25rem;
+      }
+    }
+
+    .last-updated {
+      color: #78716C;
+      font-size: 0.875rem;
+    }
+  }
+
+  .content-body {
+    color: #44403C;
+
+    p, li {
+      font-size: 1rem;
+      line-height: 1.75;
+      margin-bottom: 1rem;
+
+      @media (min-width: 640px) {
+        font-size: 1.0625rem;
+      }
+    }
+
+    .intro {
+      font-size: 1.125rem;
+      color: #57534E;
+      margin-bottom: 2.5rem;
+      text-align: center;
+      line-height: 1.8;
+
+      strong {
+        color: #6F4B30;
+      }
+    }
+  }
+
+  .policy-section {
+    margin-bottom: 3rem;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #8B5E3C;
+      margin: 0 0 1.25rem 0;
+      line-height: 1.3;
+
+      @media (min-width: 640px) {
+        font-size: 1.625rem;
+      }
+    }
+  }
+
+  .custom-list {
+    list-style: none;
+    padding-left: 0;
+    margin: 1.25rem 0;
+
+    li {
+      position: relative;
+      padding-left: 1.75rem;
+      margin-bottom: 1rem;
+      line-height: 1.75;
+
+      &:before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0.6875rem;
+        width: 0.375rem;
+        height: 0.375rem;
+        background: #8B5E3C;
+        border-radius: 50%;
+      }
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+
+      strong {
+        color: #292524;
+      }
+    }
+  }
+
+  .contact-info {
+    background: #F5F5F4;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-top: 3rem;
+    border-top: 4px solid #8B5E3C;
+
+    p {
+      margin: 0.5rem 0 0 0;
+    }
+
+    strong {
+      color: #8B5E3C;
+      font-size: 1.125rem;
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+  }
+</style>

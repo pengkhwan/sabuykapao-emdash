@@ -1,0 +1,263 @@
+---
+// src/pages/shop.astro
+import { Image } from 'astro:assets';
+import Layout from '../layouts/Layout.astro';
+import { client } from '../lib/sanityClient.js';
+import { urlFor } from '../lib/sanityImageUrl';
+import { generateCollectionSchema } from '../lib/schema/generateCollectionSchema.js';
+
+// ===== ดึงข้อมูล Shop Page Settings จาก Sanity =====
+const shopPageQuery = `*[_type == "shopPage"][0]{
+  title,
+  description,
+  seoTitle,
+  seoDescription,
+  "ogImageUrl": ogImage.asset->url,
+  ogImage { alt }
+}`;
+const shopPageData = await client.fetch(shopPageQuery);
+
+// ===== ดึงข้อมูล Categories ทั้งหมดจาก Sanity =====
+const categoriesQuery = `*[_type == "category"] | order(_createdAt asc){
+  title,
+  "slug": slug.current,
+  shortDescription,
+  image {
+    asset,
+    alt
+  }
+}`;
+
+const categories = await client.fetch(categoriesQuery);
+
+// ===== Set SEO Variables =====
+const pageTitle = shopPageData?.seoTitle || 'ร้านค้าเครื่องหนังแท้ งานฝีมือ & แฮนด์เมด สั่งทำสลักชื่อได้ | SABUYKAPAO';
+const pageDescription = shopPageData?.seoDescription || 'รวมสินค้าเครื่องหนังแท้คุณภาพ ทั้งงานแฮนด์เมดเย็บมือและงานตัดเย็บสุดปราณีต ครบทุกหมวดหมู่ กระเป๋า พวงกุญแจ ดีไซน์สวยทนทาน สั่งทำพิเศษสลักชื่อได้';
+const pageOgImage = shopPageData?.ogImageUrl;
+
+// ===== Schema Generation =====
+const site = Astro.site?.href || 'https://sabuykapao.com';
+const pageUrl = Astro.url.href;
+
+const breadcrumb = [
+  { name: 'หน้าแรก', url: '/' },
+  { name: 'ร้านค้า', url: '/shop' },
+];
+
+// แปลงหมวดหมู่ทั้งหมดเป็น items สำหรับ ItemList
+const categoryItems = categories.map((category) => ({
+  type: 'category',
+  title: category.title,
+  url: `/${category.slug}`,
+  image: category.image?.asset 
+    ? urlFor(category.image).width(500).height(500).quality(95).url() 
+    : '',
+  description: category.shortDescription || category.title,
+}));
+
+const schema = generateCollectionSchema({
+  pageType: 'categoryHub',
+  site,
+  pageTitle: pageTitle,
+  pageDescription: pageDescription,
+  pageUrl,
+  breadcrumb,
+  items: categoryItems, // ส่งรายการหมวดหมู่ทั้งหมด
+});
+---
+
+<Layout 
+  title={pageTitle}
+  description={pageDescription}
+  ogImage={pageOgImage}
+>
+  <!-- Preconnect to Sanity CDN -->
+  <link slot="head" rel="preconnect" href="https://cdn.sanity.io" />
+  <!-- Preload first category image for LCP -->
+  {categories[0]?.image?.asset && (
+    <link 
+      slot="head" 
+      rel="preload" 
+      as="image" 
+      href={urlFor(categories[0].image).width(500).height(500).quality(95).url()} 
+      imagesrcset={`
+        ${urlFor(categories[0].image).width(250).height(250).quality(95).url()} 250w,
+        ${urlFor(categories[0].image).width(400).height(400).quality(95).url()} 400w,
+        ${urlFor(categories[0].image).width(500).height(500).quality(95).url()} 500w
+      `}
+      imagesizes="(max-width: 640px) 250px, 500px"
+      fetchpriority="high" 
+    />
+  )}
+
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={schema} />
+  </Fragment>
+
+  <main class="shop-page">
+    <div class="container">
+      <div class="shop-header">
+        <h1>{shopPageData?.title || 'ร้านค้า'}</h1>
+        <p>{shopPageData?.description || 'เครื่องหนังแท้แฮนด์เมด สั่งทำพิเศษ สลักชื่อได้ ทุกหมวดหมู่'}</p>
+      </div>
+
+      <div class="categories-grid">
+        {categories.map((category, index) => (
+          <a href={`/${category.slug}`} class="category-card">
+            <div class="category-card__image-wrapper">
+              {category.image?.asset && (
+                <img
+                  src={urlFor(category.image).width(500).height(500).quality(95).url()}
+                  srcset={`
+                    ${urlFor(category.image).width(250).height(250).quality(95).url()} 250w,
+                    ${urlFor(category.image).width(400).height(400).quality(95).url()} 400w,
+                    ${urlFor(category.image).width(500).height(500).quality(95).url()} 500w
+                  `}
+                  sizes="(max-width: 640px) 250px, 500px"
+                  alt={category.image.alt || category.title}
+                  width="500"
+                  height="500"
+                  loading={index === 0 ? "eager" : "lazy"}
+                  decoding="async"
+                  fetchpriority={index === 0 ? "high" : "auto"}
+                />
+              )}
+            </div>
+            <div class="category-card__info">
+              <h3 class="category-card__name">{category.title}</h3>
+              {category.shortDescription && (
+                <p class="category-card__description">{category.shortDescription}</p>
+              )}
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+  </main>
+</Layout>
+
+<style>
+  .shop-page {
+    padding: 2rem 0;
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  .shop-header {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+
+  .shop-header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #8B4513;
+    margin-bottom: 1rem;
+  }
+
+  .shop-header p {
+    font-size: 1.125rem;
+    color: #6B7280;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .categories-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2rem;
+  }
+
+  .category-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+
+  .category-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  }
+
+  .category-card__image-wrapper {
+    position: relative;
+    width: 100%;
+    height: 300px;
+    overflow: hidden;
+    background-color: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+  }
+
+  .category-card__image-wrapper img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    object-position: center;
+    transition: transform 0.3s ease;
+    border-radius: 8px;
+  }
+
+  .category-card:hover .category-card__image-wrapper img {
+    transform: scale(1.05);
+  }
+
+  .category-card__info {
+    padding: 1.5rem;
+    text-align: center;
+  }
+
+  .category-card__name {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 0.5rem;
+  }
+
+  .category-card__description {
+    font-size: 0.875rem;
+    color: #6B7280;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  @media (max-width: 1024px) {
+    .categories-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .shop-header h1 {
+      font-size: 2rem;
+    }
+    
+    .categories-grid {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+    
+    .category-card__image-wrapper {
+      height: 300px;
+    }
+  }
+
+</style>

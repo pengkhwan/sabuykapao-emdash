@@ -1,0 +1,300 @@
+// src/styles/global-new.scss
+@import './utilities/variables';
+@import './utilities/mixins';
+
+// ===== Reset & Base Styles =====
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  @include text-style(base, normal, normal);
+  font-family: map-get($font-families, primary);
+  color: color(text-primary);
+  background-color: color(bg-primary);
+  min-height: 100vh;
+}
+
+// ===== Typography =====
+h1, h2, h3, h4, h5, h6 {
+  @include heading-style;
+  margin-bottom: spacing(4);
+}
+
+h1 { @include text-style(4xl, bold, tight); }
+h2 { @include text-style(3xl, bold, tight); }
+h3 { @include text-style(2xl, semibold, tight); }
+h4 { @include text-style(xl, semibold, tight); }
+h5 { @include text-style(lg, medium, tight); }
+h6 { @include text-style(base, medium, tight); }
+
+p {
+  @include body-text;
+}
+
+a {
+  color: color(primary);
+  text-decoration: none;
+  transition: transition(colors);
+  
+  &:hover {
+    color: color(primary-dark);
+    text-decoration: underline;
+  }
+}
+
+// ===== Lists =====
+ul, ol {
+  margin-bottom: spacing(4);
+  padding-left: spacing(6);
+}
+
+li {
+  margin-bottom: spacing(1);
+}
+
+// ===== Images =====
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+// ===== Buttons =====
+button {
+  @include button-style;
+  font-family: inherit;
+  cursor: pointer;
+  
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
+// ===== Form Elements =====
+input, textarea, select {
+  @include input-style;
+  font-family: inherit;
+}
+
+label {
+  @include text-style(sm, medium, normal);
+  color: color(text-primary);
+  margin-bottom: spacing(2);
+  display: block;
+}
+
+// ===== Layout Utilities =====
+.container {
+  @include container;
+}
+
+.flex-center {
+  @include flex-center;
+}
+
+.flex-between {
+  @include flex-between;
+}
+
+.flex-column {
+  @include flex-column;
+}
+
+.grid {
+  @include grid;
+}
+
+.grid-responsive {
+  @include grid-responsive;
+}
+
+// ===== Spacing Utilities =====
+@each $size, $value in $spacing {
+  .p-#{$size} { padding: $value; }
+  .pt-#{$size} { padding-top: $value; }
+  .pr-#{$size} { padding-right: $value; }
+  .pb-#{$size} { padding-bottom: $value; }
+  .pl-#{$size} { padding-left: $value; }
+  .px-#{$size} { padding-left: $value; padding-right: $value; }
+  .py-#{$size} { padding-top: $value; padding-bottom: $value; }
+  
+  .m-#{$size} { margin: $value; }
+  .mt-#{$size} { margin-top: $value; }
+  .mr-#{$size} { margin-right: $value; }
+  .mb-#{$size} { margin-bottom: $value; }
+  .ml-#{$size} { margin-left: $value; }
+  .mx-#{$size} { margin-left: $value; margin-right: $value; }
+  .my-#{$size} { margin-top: $value; margin-bottom: $value; }
+}
+
+// ===== Text Utilities =====
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.text-xs { @include text-style(xs); }
+.text-sm { @include text-style(sm); }
+.text-base { @include text-style(base); }
+.text-lg { @include text-style(lg); }
+.text-xl { @include text-style(xl); }
+.text-2xl { @include text-style(2xl); }
+.text-3xl { @include text-style(3xl); }
+.text-4xl { @include text-style(4xl); }
+
+.font-light { font-weight: font-weight(light); }
+.font-normal { font-weight: font-weight(normal); }
+.font-medium { font-weight: font-weight(medium); }
+.font-semibold { font-weight: font-weight(semibold); }
+.font-bold { font-weight: font-weight(bold); }
+
+.text-primary { color: color(text-primary); }
+.text-secondary { color: color(text-secondary); }
+.text-tertiary { color: color(text-tertiary); }
+.text-inverse { color: color(text-inverse); }
+
+// ===== Background Utilities =====
+.bg-primary { background-color: color(bg-primary); }
+.bg-secondary { background-color: color(bg-secondary); }
+.bg-tertiary { background-color: color(bg-tertiary); }
+
+// ===== Border Utilities =====
+.border { border: 1px solid color(border-light); }
+.border-t { border-top: 1px solid color(border-light); }
+.border-r { border-right: 1px solid color(border-light); }
+.border-b { border-bottom: 1px solid color(border-light); }
+.border-l { border-left: 1px solid color(border-light); }
+
+.rounded { border-radius: border-radius(base); }
+.rounded-sm { border-radius: border-radius(sm); }
+.rounded-md { border-radius: border-radius(md); }
+.rounded-lg { border-radius: border-radius(lg); }
+.rounded-xl { border-radius: border-radius(xl); }
+.rounded-2xl { border-radius: border-radius(2xl); }
+.rounded-full { border-radius: border-radius(full); }
+
+// ===== Shadow Utilities =====
+.shadow-sm { box-shadow: shadow(sm); }
+.shadow { box-shadow: shadow(base); }
+.shadow-md { box-shadow: shadow(md); }
+.shadow-lg { box-shadow: shadow(lg); }
+.shadow-xl { box-shadow: shadow(xl); }
+.shadow-2xl { box-shadow: shadow(2xl); }
+
+// ===== Display Utilities =====
+.block { display: block; }
+.inline-block { display: inline-block; }
+.inline { display: inline; }
+.flex { display: flex; }
+.inline-flex { display: inline-flex; }
+.grid { display: grid; }
+.hidden { display: none; }
+
+// ===== Responsive Utilities =====
+@include respond-to(sm) {
+  .sm\:block { display: block; }
+  .sm\:hidden { display: none; }
+  .sm\:flex { display: flex; }
+  .sm\:grid { display: grid; }
+}
+
+@include respond-to(md) {
+  .md\:block { display: block; }
+  .md\:hidden { display: none; }
+  .md\:flex { display: flex; }
+  .md\:grid { display: grid; }
+}
+
+@include respond-to(lg) {
+  .lg\:block { display: block; }
+  .lg\:hidden { display: none; }
+  .lg\:flex { display: flex; }
+  .lg\:grid { display: grid; }
+}
+
+// ===== Animation Utilities =====
+.fade-in {
+  @include fade-in;
+}
+
+.slide-up {
+  @include slide-up;
+}
+
+.scale-hover {
+  @include scale-hover;
+}
+
+// ===== Accessibility =====
+.sr-only {
+  @include visually-hidden;
+}
+
+.focus\:outline-none:focus {
+  outline: none;
+}
+
+.focus\:ring:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.1);
+}
+
+// ===== Print Styles =====
+@media print {
+  * {
+    background: transparent !important;
+    color: black !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  
+  a, a:visited {
+    text-decoration: underline;
+  }
+  
+  a[href]:after {
+    content: " (" attr(href) ")";
+  }
+  
+  abbr[title]:after {
+    content: " (" attr(title) ")";
+  }
+  
+  pre, blockquote {
+    border: 1px solid #999;
+    page-break-inside: avoid;
+  }
+  
+  thead {
+    display: table-header-group;
+  }
+  
+  tr, img {
+    page-break-inside: avoid;
+  }
+  
+  img {
+    max-width: 100% !important;
+  }
+  
+  p, h2, h3 {
+    orphans: 3;
+    widows: 3;
+  }
+  
+  h2, h3 {
+    page-break-after: avoid;
+  }
+}

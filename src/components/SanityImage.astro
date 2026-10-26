@@ -1,0 +1,116 @@
+---
+// src/components/SanityImage.astro (เวอร์ชัน Fixed - ใช้ไฟล์ต้นฉบับ)
+import { urlFor } from '../lib/sanityImageUrl';
+
+const { node, type = 'body', priority = false } = Astro.props;
+if (!node || !node.asset) {
+  return null;
+}
+
+// ดึงขนาดต้นฉบับของรูปภาพ
+const originalWidth = node.asset.metadata?.dimensions.width;
+const originalHeight = node.asset.metadata?.dimensions.height;
+
+// ใช้ไฟล์ต้นฉบับจาก Sanity โดยไม่ลดคุณภาพ
+const originalImageUrl = urlFor(node).quality(95).url();
+
+// สร้าง srcset - Mobile ใช้เหมือนเดิม, Desktop ใช้ขนาดเต็ม 500px
+const srcset = [
+  // Mobile - ใช้ quality 100 เหมือนเดิม
+  `${urlFor(node).width(250).quality(95).url()} 250w`,
+  `${urlFor(node).width(400).quality(95).url()} 400w`,
+  // Desktop - ใช้ขนาดเต็ม 500px (ไม่ upscale เกินต้นฉบับ)
+  `${urlFor(node).width(500).quality(95).url()} 500w`,
+].join(', ');
+
+// กำหนด sizes ให้ Desktop ใช้ขนาด 500px
+const sizes = type === 'featured-image' 
+  ? '(max-width: 640px) 350px, (max-width: 1024px) 450px, 500px'
+  : '(max-width: 640px) 250px, (max-width: 1024px) 350px, 400px';
+---
+<figure class={`${type}-image`}>
+  <img
+    src={originalImageUrl}
+    srcset={srcset}
+    sizes={sizes}
+    alt={node.alt || 'Image from content'}
+    width={originalWidth}
+    height={originalHeight}
+    loading={priority ? "eager" : "lazy"}
+    decoding="async"
+    fetchpriority={priority ? "high" : "auto"}
+  />
+  {node.caption && <figcaption>{node.caption}</figcaption>}
+</figure>
+
+<style>
+  figure {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 100%;
+    margin-inline: auto; 
+    margin-block: 2em;
+  }
+
+  /* สำหรับรูปภาพใน body content */
+  :global(figure.body-image img) {
+    width: 400px;
+    height: auto;
+    max-width: 100%;
+    display: block;
+    margin: 0 auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    
+    @media (max-width: 768px) {
+      width: 280px;
+    }
+    
+    @media (max-width: 1024px) and (min-width: 769px) {
+      width: 350px;
+    }
+  }
+
+  /* สำหรับ Featured Image */
+  :global(figure.featured-image img) {
+    width: 500px; /* ใช้ขนาดเท่าต้นฉบับ 500px เพื่อความชัดคม */
+    height: auto;
+    max-width: 100%;
+    display: block;
+    margin: 0 auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    
+    @media (max-width: 768px) {
+      width: 350px;
+    }
+    
+    @media (max-width: 1024px) and (min-width: 769px) {
+      width: 450px;
+    }
+  }
+
+  figcaption {
+    margin-top: 0.75em;
+    font-size: 0.9rem;
+    color: #6C463E;
+    font-style: italic;
+    background: linear-gradient(135deg, #F5F4F2 0%, #E6E2DE 100%);
+    display: inline-block;
+    padding: 0.5em 1.25em;
+    border-radius: 8px;
+    text-align: center;
+    border-left: 3px solid #A98C72;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    max-width: 90%;
+    line-height: 1.5;
+    
+    @media (max-width: 768px) {
+      font-size: 0.85rem;
+      padding: 0.4em 1em;
+      max-width: 95%;
+    }
+  }
+</style>

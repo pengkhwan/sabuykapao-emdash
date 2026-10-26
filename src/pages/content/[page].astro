@@ -1,0 +1,161 @@
+---
+// src/pages/content/[page].astro
+import Layout from '../../layouts/Layout.astro';
+import '../../styles/pages/_content.scss';
+import { client } from '../../lib/sanityClient.js';
+import { urlFor } from '../../lib/sanityImageUrl';
+import { generateCollectionSchema } from '../../lib/schema/generateCollectionSchema.js';
+import { mapArticlesToSchema } from '../../lib/schema/mapArticleToSchema.js';
+
+export async function getStaticPaths({ paginate }) {
+  const query = `*[_type == "article" && defined(slug.current) && (!defined(publishedAt) || publishedAt < now())]
+    | order(coalesce(publishedAt, _createdAt) desc) {
+      _id,
+      title,
+      slug,
+      excerpt,
+      featuredImage { asset, "alt": alt },
+      publishedAt,
+      _updatedAt,
+      _createdAt,
+      author->{name}
+    }`;
+  const allArticles = await client.fetch(query);
+  return paginate(allArticles, { pageSize: 9 });
+}
+
+const { page } = Astro.props;
+const articles = page.data;
+
+// Fetch content page settings (SEO)
+const contentPageData = await client.fetch(`*[_type == "contentPage"][0]{ seo }`);
+const baseTitle = contentPageData?.seo?.seoTitle || "บทความและสาระน่ารู้เกี่ยวกับเครื่องหนังแท้ | SabuyKapao";
+const baseDesc = contentPageData?.seo?.seoDescription || "รวมบทความสาระน่ารู้เกี่ยวกับเครื่องหนังแท้ วิธีดูแลรักษากระเป๋าหนัง และเคล็ดลับการเลือกซื้อเครื่องหนังคุณภาพดีจาก SabuyKapao";
+
+const pageTitle = page.currentPage > 1 ? `${baseTitle} - หน้า ${page.currentPage}` : baseTitle;
+// สร้าง description ที่ยาวขึ้นสำหรับ SEO (120-150 ตัวอักษร)
+const pageDescription = page.currentPage > 1 
+  ? `รวมบทความสาระน่ารู้เกี่ยวกับเครื่องหนังแท้ วิธีดูแลรักษากระเป๋าหนัง และเคล็ดลับการเลือกซื้อเครื่องหนังคุณภาพดีจาก SabuyKapao - หน้าที่ ${page.currentPage}`
+  : baseDesc;
+
+// สร้าง canonical URL (หน้า 1 => /content/, หน้าอื่น => /content/{n}/ - มี trailing slash สม่ำเสมอ)
+const canonicalUrl = page.currentPage === 1 
+  ? 'https://sabuykapao.com/content/' 
+  : `https://sabuykapao.com/content/${page.currentPage}/`;
+
+// OG Image - ใช้รูป featured ของบทความแรก หรือ default
+const ogImage = articles[0]?.featuredImage
+  ? urlFor(articles[0].featuredImage).width(1200).height(630).fit('crop').format('webp').quality(90).url()
+  : 'https://sabuykapao.com/icons/og-default.jpg';
+
+// ===== schema =====
+const site = Astro.site?.href || "https://sabuykapao.com";
+const pageUrl = Astro.url.href;
+
+// ใช้ reusable function สำหรับแปลง articles เป็น schema format
+// รองรับ dynamic data, date fields, และ author อัตโนมัติ
+const items = mapArticlesToSchema(articles, urlFor, site, 16);
+
+const breadcrumb = [
+  { name: "หน้าแรก", url: "/" },
+  { name: "บทความ", url: "/content/" },
+];
+
+const schema = generateCollectionSchema({
+  pageType: "blogIndex",
+  site,
+  pageTitle,
+  pageDescription,
+  pageUrl,
+  breadcrumb,
+  items,
+});
+---
+<Layout 
+  title={pageTitle}
+  description={pageDescription}
+  canonical={canonicalUrl}
+  ogImage={ogImage}
+  ogType="website"
+>
+  <!-- Preconnect to Sanity CDN -->
+  <link slot="head" rel="preconnect" href="https://cdn.sanity.io" />
+  <!-- Preload first article image for LCP -->
+  {articles[0]?.featuredImage && (
+    <link 
+      slot="head" 
+      rel="preload" 
+      as="image" 
+      href={urlFor(articles[0].featuredImage).width(400).height(400).quality(90).format('webp').url()} 
+      imagesrcset={`
+        ${urlFor(articles[0].featuredImage).width(200).height(200).quality(90).format('webp').url()} 200w,
+        ${urlFor(articles[0].featuredImage).width(400).height(400).quality(90).format('webp').url()} 400w,
+
+      `}
+      imagesizes="(max-width: 480px) 50vw, 400px"
+      fetchpriority="high" 
+    />
+  )}
+
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={schema}></script>
+  </Fragment>
+
+  <main class="content-page">
+    <div class="container">
+      <h1 class="page-title">บทความน่ารู้</h1>
+
+      <div class="content-grid" data-list>
+        {articles.map((article, index) => (
+          <article class="article-card" data-slug={article.slug.current}>
+            <a href={`/${article.slug.current}`} class="article-card__image-link">
+              {article.featuredImage ? (
+                <img
+                  src={urlFor(article.featuredImage).width(400).height(400).quality(90).format('webp').url()}
+                  srcset={`
+                    ${urlFor(article.featuredImage).width(200).height(200).quality(90).format('webp').url()} 200w,
+                    ${urlFor(article.featuredImage).width(400).height(400).quality(90).format('webp').url()} 400w
+                  `}
+                  sizes="(max-width: 640px) 200px, 400px"
+                  alt={article.featuredImage.alt || article.title}
+                  width="400"
+                  height="400"
+                  loading={index < 3 ? 'eager' : 'lazy'}
+                  decoding="async"
+                  fetchpriority={index === 0 ? 'high' : 'auto'}
+                />
+              ) : (
+                <div class="placeholder-image"></div>
+              )}
+            </a>
+            <div class="article-card__content">
+              <h2 class="article-card__title">
+                <a href={`/${article.slug.current}`}>{article.title}</a>
+              </h2>
+              {article.excerpt && <p class="article-card__excerpt">{article.excerpt}</p>}
+            </div>
+          </article>
+        ))}
+      </div>
+
+      {page.lastPage > 1 && (
+        <nav class="pagination">
+          {Array.from({ length: page.lastPage }).map((_, i) => {
+            const p = i + 1;
+            const cls = ['pagination__link', p === page.currentPage ? 'current' : ''].filter(Boolean).join(' ');
+            return (
+              <a
+                href={p === 1 ? '/content' : `/content/${p}`}
+                class={cls}
+                data-nextpage={String(p)}
+                data-json-base="/data/content/page-"
+              >
+                {p}
+              </a>
+            );
+          })}
+        </nav>
+      )}
+    </div>
+  </main>
+</Layout>

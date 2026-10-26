@@ -1,0 +1,16 @@
+---
+// References.astro
+// Component แสดง References (External Links)
+const { references } = Astro.props;
+---
+
+{Array.isArray(references) && references.length > 0 && (
+  <section class="references-section">
+    <h2>อ้างอิง</h2>
+    <ul>
+      {references.map((ref) => (
+        <li><a href={ref.url} target="_blank" rel="noopener">{ref.label}</a></li>
+      ))}
+    </ul>
+  </section>
+)}

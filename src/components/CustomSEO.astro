@@ -1,0 +1,72 @@
+---
+// src/components/CustomSEO.astro
+export interface Props {
+  title: string;
+  description: string;
+  canonical?: string;
+  ogImage?: string;
+  ogType?: string;
+  twitterCard?: string;
+  twitterSite?: string;
+  twitterCreator?: string;
+}
+
+const { 
+  title, 
+  description, 
+  canonical, 
+  ogImage, 
+  ogType = "website",
+  twitterCard = "summary_large_image",
+  twitterSite,
+  twitterCreator
+} = Astro.props;
+
+// สร้าง canonical URL อย่างถูกต้อง
+// - ไม่ใช้ Astro.url.pathname เพราะอาจมี .html หรือ trailing slash ไม่แน่นอน
+// - ใช้ canonical ที่ส่งมาจากหน้านั้นๆ โดยตรง หรือสร้างจาก Astro.url
+const canonicalURL = canonical || (() => {
+  let pathname = Astro.url.pathname;
+  
+  // ตัด .html ออก (กรณีที่มีติดมาจาก build.format: 'file')
+  pathname = pathname.replace(/\.html$/, '');
+  
+  // ตัด trailing slash ออก ยกเว้นหน้าแรก
+  if (pathname !== '/' && pathname.endsWith('/')) {
+    pathname = pathname.slice(0, -1);
+  }
+  
+  return new URL(pathname, Astro.site).href;
+})();
+
+// สร้าง OG image URL - ใช้ default image ถ้าไม่ได้ส่งมา
+const defaultOgImage = 'https://sabuykapao.com/images/default-og.jpg';
+const rawOgImage = ogImage || defaultOgImage;
+const ogImageURL = rawOgImage.startsWith('http') ? rawOgImage : new URL(rawOgImage, Astro.site).href;
+---
+
+<title>{title}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={canonicalURL} />
+
+<!-- Open Graph / Facebook -->
+<meta property="og:type" content={ogType} />
+<meta property="og:url" content={canonicalURL} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:image" content={ogImageURL} />
+
+<!-- Twitter -->
+<meta name="twitter:card" content={twitterCard} />
+<meta name="twitter:url" content={canonicalURL} />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={ogImageURL} />
+{twitterSite && <meta name="twitter:site" content={twitterSite} />}
+{twitterCreator && <meta name="twitter:creator" content={twitterCreator} />}
+
+<!-- Additional SEO meta tags -->
+<!-- <meta name="robots" content="index, follow" /> -->
+<meta name="author" content="SabuyKapao" />
+<meta name="generator" content={Astro.generator} />
+
